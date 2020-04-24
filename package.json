@@ -1,0 +1,17 @@
+{
+  "name": "mutual_aid_call_center",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "twilio-run --env",
+    "deploy": "twilio-run deploy",
+    "deploy-prod": "twilio-run deploy --environment=production"
+  },
+  "devDependencies": {
+    "twilio-run": "2.* || >2.0.0-rc"
+  },
+  "engines": {
+    "node": "8.10.0"
+  }
+}
