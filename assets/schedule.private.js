@@ -33,8 +33,8 @@ module.exports = {
       end: "15:00:00",
     },
     Saturday: {
-      begin: null,
-      end: null,
+      begin: "07:00:00",
+      end: "12:00:00",
     },
     Sunday: {
       begin: null,
