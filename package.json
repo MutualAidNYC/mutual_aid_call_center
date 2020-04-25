@@ -15,7 +15,6 @@
     "node": "8.10.0"
   },
   "dependencies": {
-    "axios": "^0.19.2",
     "moment-range": "^4.0.2",
     "moment-timezone": "^0.5.28"
   }
