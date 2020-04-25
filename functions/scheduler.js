@@ -5,7 +5,6 @@ const moment = MomentRange.extendMoment(Moment);
 const TIMEZONE = "America/New_York";
 exports.handler = function (context, event, callback) {
   //create Twilio Response
-  console.log("entered function");
   let response = new Twilio.Response();
   response.appendHeader("Access-Control-Allow-Origin", "*");
   response.appendHeader("Access-Control-Allow-Methods", "OPTIONS POST");
@@ -21,22 +20,13 @@ exports.handler = function (context, event, callback) {
     description: "",
   };
 
-  console.log("create response");
-  const timezone = TIMEZONE;
-  // const country = event.country;
-  console.log("event", event);
-  console.log("timezone", timezone);
   //load JSON with schedule
-  // const jsonFile = `https://${context.DOMAIN_NAME}/${country}Schedule.json`;
-  // axios.get(jsonFile).then(function (axiosResponse) {
   const assets = Runtime.getAssets();
   const privateMessageAsset = assets["/schedule.js"];
   const privateMessagePath = privateMessageAsset.path;
   const schedule = require(privateMessagePath);
-  console.log("schedule", schedule);
-  // const schedule = axiosResponse.data;
 
-  const currentDate = moment().tz(timezone).format("MM/DD/YYYY");
+  const currentDate = moment().tz(TIMEZONE).format("MM/DD/YYYY");
 
   const isHoliday = currentDate in schedule.holidays;
   const isPartialDay = currentDate in schedule.partialDays;
@@ -60,7 +50,7 @@ exports.handler = function (context, event, callback) {
       checkIfInRange(
         schedule.partialDays[currentDate].begin,
         schedule.partialDays[currentDate].end,
-        timezone
+        TIMEZONE
       ) === true
     ) {
       response.body.isOpen = true;
@@ -70,14 +60,14 @@ exports.handler = function (context, event, callback) {
     }
   } else {
     //regular hours
-    const dayOfWeek = moment().tz(timezone).format("dddd");
+    const dayOfWeek = moment().tz(TIMEZONE).format("dddd");
 
     response.body.isRegularDay = true;
     if (
       checkIfInRange(
         schedule.regularHours[dayOfWeek].begin,
         schedule.regularHours[dayOfWeek].end,
-        timezone
+        TIMEZONE
       ) === true
     ) {
       response.body.isOpen = true;
@@ -86,7 +76,6 @@ exports.handler = function (context, event, callback) {
       callback(null, response);
     }
   }
-  // });
 };
 
 function checkIfInRange(begin, end, timezone) {
