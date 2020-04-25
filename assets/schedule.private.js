@@ -13,28 +13,28 @@ module.exports = {
   },
   regularHours: {
     Monday: {
-      begin: "07:00:00",
+      begin: "13:30:00",
       end: "20:00:00",
     },
     Tuesday: {
-      begin: "13:00:00",
+      begin: "17:30:00",
       end: "20:00:00",
     },
     Wednesday: {
-      begin: "07:00:00",
+      begin: "01:30:00",
       end: "20:00:00",
     },
     Thursday: {
-      begin: "07:00:00",
-      end: "20:00:00",
+      begin: null,
+      end: null,
     },
     Friday: {
       begin: "07:00:00",
       end: "15:00:00",
     },
     Saturday: {
-      begin: "07:00:00",
-      end: "12:00:00",
+      begin: null,
+      end: null,
     },
     Sunday: {
       begin: null,
