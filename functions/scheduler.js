@@ -2,80 +2,43 @@
 const Moment = require("moment-timezone");
 const MomentRange = require("moment-range");
 const moment = MomentRange.extendMoment(Moment);
+
 const TIMEZONE = "America/New_York";
+const HOLIDAYS = "holidays";
+const PARTIAL_DAYS = "partialDays";
+
 exports.handler = function (context, event, callback) {
   //create Twilio Response
-  let response = new Twilio.Response();
-  response.appendHeader("Access-Control-Allow-Origin", "*");
-  response.appendHeader("Access-Control-Allow-Methods", "OPTIONS POST");
-  response.appendHeader("Content-Type", "application/json");
-  response.appendHeader("Access-Control-Allow-Headers", "Content-Type");
+  let response = createResponseObject();
+  const schedule = getAsset("schedule.js");
 
-  //create default response body
-  response.body = {
-    isOpen: false,
-    isHoliday: false,
-    isPartialDay: false,
-    isRegularDay: false,
-    description: "",
-  };
-
-  //load JSON with schedule
-  const assets = Runtime.getAssets();
-  const privateMessageAsset = assets["/schedule.js"];
-  const privateMessagePath = privateMessageAsset.path;
-  const schedule = require(privateMessagePath);
-
+  // set some variables
   const currentDate = moment().tz(TIMEZONE).format("MM/DD/YYYY");
-
   const isHoliday = currentDate in schedule.holidays;
   const isPartialDay = currentDate in schedule.partialDays;
 
   if (isHoliday) {
     response.body.isHoliday = true;
-
-    if (typeof schedule.holidays[currentDate].description !== "undefined") {
-      response.body.description = schedule.holidays[currentDate].description;
-    }
-
-    callback(null, response);
+    response = setDescription(response, schedule, HOLIDAYS);
   } else if (isPartialDay) {
     response.body.isPartialDay = true;
+    response = setDescription(response, schedule, PARTIAL_DAYS);
 
-    if (typeof schedule.partialDays[currentDate].description !== "undefined") {
-      response.body.description = schedule.partialDays[currentDate].description;
-    }
+    const { begin, end } = schedule.partialDays[currentDate];
+    const inTimeRange = checkIfInRange(begin, end, TIMEZONE);
 
-    if (
-      checkIfInRange(
-        schedule.partialDays[currentDate].begin,
-        schedule.partialDays[currentDate].end,
-        TIMEZONE
-      ) === true
-    ) {
-      response.body.isOpen = true;
-      callback(null, response);
-    } else {
-      callback(null, response);
-    }
+    if (inTimeRange) response.body.isOpen = true;
   } else {
     //regular hours
     const dayOfWeek = moment().tz(TIMEZONE).format("dddd");
+    const { begin, end } = schedule.regularHours[dayOfWeek];
+    const inTimeRange = checkIfInRange(begin, end, TIMEZONE);
 
     response.body.isRegularDay = true;
-    if (
-      checkIfInRange(
-        schedule.regularHours[dayOfWeek].begin,
-        schedule.regularHours[dayOfWeek].end,
-        TIMEZONE
-      ) === true
-    ) {
-      response.body.isOpen = true;
-      callback(null, response);
-    } else {
-      callback(null, response);
-    }
+
+    if (inTimeRange) response.body.isOpen = true;
   }
+  callback(null, response);
 };
 
 function checkIfInRange(begin, end, timezone) {
@@ -96,3 +59,37 @@ function checkIfInRange(begin, end, timezone) {
 
   return now.within(range);
 }
+
+const setDescription = (response, schedule, dayType) => {
+  if (typeof schedule[daytype][currentDate].description !== "undefined") {
+    response.body.description = schedule[daytype][currentDate].description;
+  }
+  return response;
+};
+
+const createResponseObject = () => {
+  //create Twilio Response
+  let response = new Twilio.Response();
+  response.appendHeader("Access-Control-Allow-Origin", "*");
+  response.appendHeader("Access-Control-Allow-Methods", "OPTIONS POST");
+  response.appendHeader("Content-Type", "application/json");
+  response.appendHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  //create default response body
+  response.body = {
+    isOpen: false,
+    isHoliday: false,
+    isPartialDay: false,
+    isRegularDay: false,
+    description: "",
+  };
+
+  return response;
+};
+
+const getAsset = (assetName) => {
+  const assets = Runtime.getAssets();
+  const privateAsset = assets[`/${assetName}`];
+  const privatePath = privateAsset.path;
+  return require(privatePath);
+};
