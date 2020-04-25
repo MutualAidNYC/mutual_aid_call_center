@@ -30,10 +30,10 @@ exports.handler = function (context, event, callback) {
 
   if (isHoliday) {
     response.body.isHoliday = true;
-    response = setDescription(response, schedule, HOLIDAYS);
+    response = setDescription(response, schedule, HOLIDAYS, currentDate);
   } else if (isPartialDay) {
     response.body.isPartialDay = true;
-    response = setDescription(response, schedule, PARTIAL_DAYS);
+    response = setDescription(response, schedule, PARTIAL_DAYS, currentDate);
 
     // the next line uses object destructuring
     const { begin, end } = schedule.partialDays[currentDate];
@@ -50,6 +50,7 @@ exports.handler = function (context, event, callback) {
 
     if (inTimeRange) response.body.isOpen = true;
   }
+
   callback(null, response);
 };
 
@@ -90,9 +91,10 @@ function checkIfInRange(begin, end, timezone) {
  * @param {Response} response - The twilio response object to modify
  * @param {Object} schedule - An object with the schdule in an appropriate format
  * @param {String} dayType - An object with the schdule in an appropriate format
+ * @param {String} currentDate - A string with today's date
  * @return {Response} - Returns the modified response object
  */
-const setDescription = (response, schedule, dayType) => {
+const setDescription = (response, schedule, dayType, currentDate) => {
   if (typeof schedule[dayType][currentDate].description !== "undefined") {
     response.body.description = schedule[dayType][currentDate].description;
   }
