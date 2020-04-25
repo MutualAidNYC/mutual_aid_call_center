@@ -93,8 +93,8 @@ function checkIfInRange(begin, end, timezone) {
  * @return {Response} - Returns the modified response object
  */
 const setDescription = (response, schedule, dayType) => {
-  if (typeof schedule[daytype][currentDate].description !== "undefined") {
-    response.body.description = schedule[daytype][currentDate].description;
+  if (typeof schedule[dayType][currentDate].description !== "undefined") {
+    response.body.description = schedule[dayType][currentDate].description;
   }
   return response;
 };
