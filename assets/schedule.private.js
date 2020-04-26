@@ -44,4 +44,66 @@ module.exports = {
       end: null,
     },
   },
+  languages: {
+    english: {
+      Monday: {
+        begin: "13:30:00",
+        end: "20:00:00",
+      },
+      Tuesday: {
+        begin: "17:30:00",
+        end: "20:00:00",
+      },
+      Wednesday: {
+        begin: "01:30:00",
+        end: "20:00:00",
+      },
+      Thursday: {
+        begin: null,
+        end: null,
+      },
+      Friday: {
+        begin: "07:00:00",
+        end: "15:00:00",
+      },
+      Saturday: {
+        begin: null,
+        end: null,
+      },
+      Sunday: {
+        begin: null,
+        end: null,
+      },
+    },
+    spanish: {
+      Monday: {
+        begin: "13:30:00",
+        end: "20:00:00",
+      },
+      Tuesday: {
+        begin: "17:30:00",
+        end: "20:00:00",
+      },
+      Wednesday: {
+        begin: "01:30:00",
+        end: "20:00:00",
+      },
+      Thursday: {
+        begin: null,
+        end: null,
+      },
+      Friday: {
+        begin: "07:00:00",
+        end: "15:00:00",
+      },
+      Saturday: {
+        begin: null,
+        end: null,
+      },
+      Sunday: {
+        begin: null,
+        end: null,
+      },
+    },
+  },
 };
