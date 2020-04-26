@@ -23,7 +23,7 @@ const PARTIAL_DAYS = "partialDays";
  */
 exports.handler = function (context, event, callback) {
   let response = createResponseObject(); //create Twilio Response
-  const schedule = getAsset("schedule.js"); //get the schdule from assets
+  const schedule = getPrivateAsset("schedule.js"); //get the schedule from assets
 
   // set some variables
   const currentDate = moment().tz(TIMEZONE).format("MM/DD/YYYY");
@@ -139,7 +139,7 @@ const createResponseObject = () => {
  * @param {Array} data - The array of cell header names
  * @return {Object} - Returns the fetched asset as an Object
  */
-const getAsset = (assetName) => {
+const getPrivateAsset = (assetName) => {
   const assets = Runtime.getAssets();
   const privateAsset = assets[`/${assetName}`];
   const privatePath = privateAsset.path;
