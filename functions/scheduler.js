@@ -3,6 +3,8 @@ const MomentRange = require("moment-range");
 const moment = MomentRange.extendMoment(Moment);
 
 // setup some constants
+
+// TIMEZONE can be changed to any values found at https://momentjs.com/timezone/
 const TIMEZONE = "America/New_York";
 const HOLIDAYS = "holidays";
 const PARTIAL_DAYS = "partialDays";
