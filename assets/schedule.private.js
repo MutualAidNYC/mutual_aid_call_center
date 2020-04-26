@@ -1,13 +1,16 @@
+// Dates should be in format of mm/dd/yyyy
+// Times are in 24 hour format of hh:mm:ss
+// If closed for the day, both begin and end should be null
 module.exports = {
   holidays: {
-    "12/25/2019": {
+    "04/25/2019": {
       description: "Christmas",
     },
   },
   partialDays: {
-    "12/26/2019": {
+    "04/25/2019": {
       begin: "10:00:00",
-      end: "14:00:00",
+      end: "20:00:00",
       description: "Day after Christmas",
     },
   },
