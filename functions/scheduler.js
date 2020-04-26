@@ -3,16 +3,14 @@ const MomentRange = require("moment-range");
 const moment = MomentRange.extendMoment(Moment);
 
 // setup some constants
-
-// TIMEZONE can be changed to any values found at https://momentjs.com/timezone/
-const TIMEZONE = "America/New_York";
 const HOLIDAYS = "holidays";
 const PARTIAL_DAYS = "partialDays";
 
-// main invoked function (called by twillio flow)
-
 /**
- * Sets up and returns a response object to provide variables to a flow.
+ * Main invoked function (called by twillio flow)
+ * Checks schedule.private.js for the schedule and then sets up and returns a
+ * response object to provide variables to a flow.
+ *
  * This is a modified version of a function from:
  * https://www.twilio.com/blog/advanced-schedules-studio
  * @author Aaron Young <hi@aaronyoung.io>
@@ -21,12 +19,13 @@ const PARTIAL_DAYS = "partialDays";
  * @param {Function} callback - Function used to complete execution and emit responses
  * @return {void}
  */
-exports.handler = function (context, event, callback) {
+exports.handler = function (_context, event, callback) {
   let response = createResponseObject(); //create Twilio Response
   const schedule = getPrivateAsset("schedule.js"); //get the schedule from assets
 
   // set some variables
-  const currentDate = moment().tz(TIMEZONE).format("MM/DD/YYYY");
+  const { timezone } = event;
+  const currentDate = moment().tz(timezone).format("MM/DD/YYYY");
   const isHoliday = currentDate in schedule.holidays;
   const isPartialDay = currentDate in schedule.partialDays;
 
@@ -39,14 +38,14 @@ exports.handler = function (context, event, callback) {
 
     // the next line uses object destructuring
     const { begin, end } = schedule.partialDays[currentDate];
-    const inTimeRange = checkIfInRange(begin, end, TIMEZONE);
+    const inTimeRange = checkIfInRange(begin, end, timezone);
 
     if (inTimeRange) response.body.isOpen = true;
   } else {
     //regular hours
-    const dayOfWeek = moment().tz(TIMEZONE).format("dddd");
+    const dayOfWeek = moment().tz(timezone).format("dddd");
     const { begin, end } = schedule.regularHours[dayOfWeek];
-    const inTimeRange = checkIfInRange(begin, end, TIMEZONE);
+    const inTimeRange = checkIfInRange(begin, end, timezone);
 
     response.body.isRegularDay = true;
 
