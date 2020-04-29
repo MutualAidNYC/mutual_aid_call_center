@@ -1,6 +1,6 @@
 {
   "name": "mutual-aid-call-center",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -13,7 +13,7 @@
     "twilio-run": "2.* || >2.0.0-rc"
   },
   "engines": {
-    "node": "8.10.0"
+    "node": "10.17.0"
   },
   "dependencies": {
     "moment-range": "^4.0.2",
