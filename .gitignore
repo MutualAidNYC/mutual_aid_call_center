@@ -1,3 +1,6 @@
+# twillio identifiable info
+.twilio-functions
+
 # Logs
 logs
 *.log
