@@ -18,9 +18,10 @@ While twilio allows for functions to be written using their UI only website to c
 8. Create `.env` in the root of the project file
 
    1. Copy `.env-sample` to `.env` with the command: `$ cp .env-sample .env`
-   2. Change the values in `.env` file, by getting the [Twilio API sid and auth_token](https://www.twilio.com/console/project/settings) or having an administrator provide it to you. This will NOT be uploaded for security to github as it is git ignored.
+   2. Change the values in `.env` file, by getting the [Twilio API sid and auth_token](https://www.twilio.com/console/project/settings) or having an administrator provide it to you. This will NOT be commited to git for security as it is git ignored.
       - `ACCOUNT_SID`: The Account SID
       - `AUTH_TOKEN`: Auth Token
+   3. If you add any addition key=value pairs, they will be uploaded to twilio as a enviroment variable within the twilio api serverless enviroment. It will also be available during local development.
 
 ## Instructions for local development
 
