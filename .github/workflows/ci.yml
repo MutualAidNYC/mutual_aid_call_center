@@ -23,3 +23,6 @@ jobs:
       - run: npm test
         env:
           CI: true
+          AIRTABLE_DELAY: 900000
+          AIRTABLE_DEV_PHONE_BASE: appXtRafWpqSDGZIU
+          AIRTABLE_PROD_PHONE_BASE: ***REMOVED***
