@@ -6,7 +6,7 @@
   "scripts": {
     "test": "mocha",
     "debug": "node --nolazy --inspect-brk=9229 app.js",
-    "start": "node app.js",
+    "start": "nodemon app.js",
     "coverage": "nyc --reporter=text --reporter=html mocha --exit --timeout 15000"
   },
   "repository": {
@@ -36,6 +36,7 @@
     "dotenv": "^8.2.0",
     "husky": "^4.2.5",
     "mocha": "^7.1.2",
+    "nodemon": "^2.0.3",
     "nyc": "^15.0.1",
     "sinon": "^9.0.2",
     "supertest": "^4.0.2"

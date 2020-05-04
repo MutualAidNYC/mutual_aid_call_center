@@ -24,7 +24,7 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
 
 1. `$ npm test` - Runs the mocha test suite
 2. `$ npn run debug` - Used by VSCode
-3. `$ npm start` - Start a local instance of the server
+3. `$ npm start` - Starts a local server using nodemon which will re-run the project on every file save
 4. `$ npm run coverage` - Starts an Istanbul test coverage report. In addition to the console output, there is a `./coverage/index.html` that is generated for a more detailed report in the browser
 
 # Debugging server locally using VSCode
