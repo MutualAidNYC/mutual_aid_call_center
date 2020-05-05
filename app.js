@@ -1,23 +1,29 @@
+"use stict";
 console.log("warming up");
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config(); // load the local .env file
 }
-
 const app = require("./server");
+const {
+  getInitialShift,
+  saveShiftNumbers,
+} = require("./workers/getShiftNumbers");
 
-// const users = require("./routes/api/users");
-// const tweets = require("./routes/api/tweets");
+require("./routes/api/schedule");
+require("./routes/api/simuldial");
+
+const startUp = (languagesToPhones) => {
+  saveShiftNumbers(languagesToPhones);
+  app.listen(port, onListen);
+};
+
 app.get("/", (req, res) => {
   res.send("Hello World!!");
 });
 
-require("./routes/api/schedule");
-// app.use("/api/users", users);
-// app.use("/api/tweets", tweets);
-
+const port = process.env.PORT || 80;
 const onListen = () => console.log(`Server is running on port ${port}`);
 
-const port = process.env.PORT || 80;
-app.listen(port, onListen);
-
+// start the engine
+getInitialShift(startUp);
 module.exports = app;
