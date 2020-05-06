@@ -1,8 +1,9 @@
 'use stict';
 
-console.log('warming up');
 const dotenv = require('dotenv');
+const moment = require('moment-timezone');
 
+console.log(moment().tz('America/New_York').format(), 'warming up');
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config(); // load the local .env file
 }
@@ -16,7 +17,11 @@ require('./routes/api/simuldial');
 
 const port = process.env.PORT || 80;
 
-const onListen = () => console.log(`Server is running on port ${port}`);
+const onListen = () =>
+  console.log(
+    moment().tz('America/New_York').format(),
+    `Server is running on port ${port}`,
+  );
 const startUp = (languagesToPhones) => {
   saveShiftNumbers(languagesToPhones);
   app.listen(port, onListen);

@@ -1,5 +1,5 @@
 const dotenv = require('dotenv');
-const moment = require('moment');
+const moment = require('moment-timezone');
 const Airtable = require('airtable');
 const app = require('../server');
 
@@ -17,8 +17,8 @@ const baseId = isProd
 const base = new Airtable({ apiKey }).base(baseId);
 
 const todayAt = (hour) => {
-  const date = moment().format().slice(0, 10);
-  return moment(`${date} ${hour}`);
+  const date = moment().tz('America/New_York').format().slice(0, 10);
+  return moment(`${date} ${hour}`).tz('America/New_York');
 };
 
 const getShiftNumbers = (timePeriod, callback) => {
@@ -61,11 +61,11 @@ const getShiftNumbers = (timePeriod, callback) => {
 let shiftLastGathered;
 const saveShiftNumbers = (languagesToPhones) => {
   app.set('languages', languagesToPhones);
-  shiftLastGathered = moment();
+  shiftLastGathered = moment().tz('America/New_York');
 };
 const shiftTimer = () => {
   // do stuff
-  const now = moment();
+  const now = moment().tz('America/New_York');
   const todayAt2Pm = todayAt('14');
   const todayAt5Pm = todayAt('17');
   const todayAt8Pm = todayAt('20');
@@ -90,11 +90,17 @@ const shiftTimer = () => {
 };
 
 const getInitialShift = (callback) => {
-  shiftLastGathered = moment();
-  if (moment().isBefore(todayAt(17))) {
-    getShiftNumbers(`${moment().format('dddd')} 2PM - 5PM`, callback);
+  shiftLastGathered = moment().tz('America/New_York');
+  if (moment().tz('America/New_York').isBefore(todayAt(17))) {
+    getShiftNumbers(
+      `${moment().tz('America/New_York').format('dddd')} 2PM - 5PM`,
+      callback,
+    );
   } else {
-    getShiftNumbers(`${moment().format('dddd')} 5PM - 8PM`, callback);
+    getShiftNumbers(
+      `${moment().tz('America/New_York').format('dddd')} 5PM - 8PM`,
+      callback,
+    );
   }
   shiftTimer();
 };
