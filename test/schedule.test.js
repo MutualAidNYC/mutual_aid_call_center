@@ -5,6 +5,8 @@ const axios = require('axios');
 const {
   transformSchedule,
   getScheduleFromBase,
+  setDevSchedule,
+  setProdSchedule,
 } = require('../routes/api/schedule');
 require('dotenv').config(); // load the local .env file
 
@@ -44,39 +46,6 @@ describe('api/schedule', () => {
       afterEach(() => {
         mock.restore();
       });
-      describe('It Throttles', () => {
-        beforeEach(() => {
-          this.clock = sinon.useFakeTimers();
-        });
-        afterEach(() => {
-          this.clock.restore();
-        });
-        it('Calls axios only once with consecutive calls', async () => {
-          const data = sampleInput;
-          const resolved = new Promise((r) => r({ data }));
-          mock.expects('get').returns(resolved).once();
-          this.clock.tick(1); // start the clock at 1, 0 is falsy
-          await getDevBase();
-          this.clock.tick(1);
-          await getDevBase();
-          mock.verify();
-        });
-
-        it(`Calls axios only twice in a ${
-          process.env.AIRTABLE_DELAY + 1
-        } miliseconds period`, async () => {
-          const data = sampleInput;
-          const resolved = new Promise((r) => r({ data }));
-          mock.expects('get').returns(resolved).twice();
-          this.clock.tick(1);
-          await getDevBase();
-          this.clock.tick(1);
-          await getDevBase(); // this shouldn't fire
-          this.clock.tick(parseInt(process.env.AIRTABLE_DELAY));
-          await getDevBase();
-          mock.verify();
-        });
-      });
       it('Returns a transformed schedule', async () => {
         const data = sampleInput;
         const resolved = new Promise((r) => r({ data }));
@@ -85,50 +54,47 @@ describe('api/schedule', () => {
         expect(result).to.eql(sampleOutput);
       });
     });
+    describe('setSchedule(s)', () => {
+      let mock;
+      const schedule = 'some schedule';
+      beforeEach(() => {
+        mock = sinon.mock(app);
+      });
+      afterEach(() => {
+        mock.restore();
+      });
+      describe('setDevSchedule', () => {
+        it('Invokes app.set("devSchedule")', async () => {
+          const getDevSchedule = sinon.fake.returns(schedule);
+          mock.expects('set').withExactArgs('devSchedule', schedule);
+          await setDevSchedule(getDevSchedule);
+          mock.verify();
+        });
+      });
+      describe('setProdSchedule', () => {
+        it('Invokes app.set("devSchedule")', async () => {
+          const getProdSchedule = sinon.fake.returns(schedule);
+          mock.expects('set').withExactArgs('prodSchedule', schedule);
+          await setProdSchedule(getProdSchedule);
+          mock.verify();
+        });
+      });
+    });
   });
   describe('GET /development', () => {
-    let mock;
-    beforeEach(() => {
-      mock = sinon.mock(axios);
-    });
-    afterEach(() => {
-      mock.restore();
-    });
-    it('should invoke the dev airtable api and return 200 with schedule', async () => {
-      const data = sampleInput;
-      const resolved = new Promise((r) => r({ data }));
-      const base = process.env.AIRTABLE_DEV_PHONE_BASE;
-      const url = `https://api.airtable.com/v0/${base}/General%20Hours`;
-      const config = {
-        headers: { Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}` },
-      };
-      mock.expects('get').withExactArgs(url, config).returns(resolved);
+    it('should get a devSchedule from app.get', async () => {
+      app.set('devSchedule', sampleOutput);
       const res = await request(app).get('/api/schedule/development');
-      mock.verify();
+      app.set('devSchedule', undefined); // reset the value
       expect(res.status).to.equal(200);
       expect(res.body).to.eql(sampleOutput);
     });
   });
 
   describe('GET /production', () => {
-    let mock;
-    beforeEach(() => {
-      mock = sinon.mock(axios);
-    });
-    afterEach(() => {
-      mock.restore();
-    });
-    it('should invoke the dev airtable api and return 200 with schedule', async () => {
-      const data = sampleInput;
-      const resolved = new Promise((r) => r({ data }));
-      const base = process.env.AIRTABLE_PROD_PHONE_BASE;
-      const url = `https://api.airtable.com/v0/${base}/General%20Hours`;
-      const config = {
-        headers: { Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}` },
-      };
-      mock.expects('get').withExactArgs(url, config).returns(resolved);
+    it('should get a prodSchedule from app.get', async () => {
+      app.set('prodSchedule', sampleOutput);
       const res = await request(app).get('/api/schedule/production');
-      mock.verify();
       expect(res.status).to.equal(200);
       expect(res.body).to.eql(sampleOutput);
     });

@@ -15,6 +15,8 @@ const {
 require('./routes/api/schedule');
 require('./routes/api/simuldial');
 
+const { setDevSchedule, setProdSchedule } = require('./routes/api/schedule');
+
 const port = process.env.PORT || 80;
 
 const onListen = () =>
@@ -22,9 +24,17 @@ const onListen = () =>
     moment().tz('America/New_York').format(),
     `Server is running on port ${port}`,
   );
-const startUp = (languagesToPhones) => {
+const startUp = async (languagesToPhones) => {
   saveShiftNumbers(languagesToPhones);
+  await setDevSchedule();
+  await setProdSchedule();
   app.listen(port, onListen);
+
+  // event loop, we want these things to happen at a slow poll
+  setInterval(() => {
+    setDevSchedule();
+    setProdSchedule();
+  }, process.env.AIRTABLE_DELAY);
 };
 
 app.get('/', (req, res) => {
