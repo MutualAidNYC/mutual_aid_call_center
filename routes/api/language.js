@@ -9,7 +9,7 @@ const HEADER = `<?xml version="1.0" encoding="UTF-8"?>
     <Response>`;
 
 const FOOTER = '</Response>';
-app.get('/api/language/:language', async (req, res) => {
+app.post('/api/language/:language', async (req, res) => {
   const language = req.params.language.toLowerCase();
   const docParts = [HEADER];
   const languageObj = app.get('languages');

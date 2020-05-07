@@ -13,7 +13,7 @@ const {
   saveShiftNumbers,
 } = require('./workers/getShiftNumbers');
 require('./routes/api/schedule');
-require('./routes/api/simuldial');
+require('./routes/api/language');
 
 const { setDevSchedule, setProdSchedule } = require('./routes/api/schedule');
 
