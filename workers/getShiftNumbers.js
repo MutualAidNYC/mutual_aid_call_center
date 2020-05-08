@@ -18,7 +18,7 @@ const base = new Airtable({ apiKey }).base(baseId);
 
 const todayAt = (hour) => {
   const date = moment().tz('America/New_York').format().slice(0, 10);
-  return moment(`${date} ${hour}`).tz('America/New_York');
+  return moment.tz(`${date} ${hour}`, 'America/New_York');
 };
 
 const getShiftNumbers = (timePeriod, callback) => {
@@ -86,7 +86,7 @@ const shiftTimer = () => {
   // do it again in 0.5 seconds (or more)
   setTimeout(() => {
     shiftTimer();
-  }, 500);
+  }, 1000);
 };
 
 const getInitialShift = (callback) => {
