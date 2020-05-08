@@ -14,7 +14,7 @@ app.post('/api/language/:language', async (req, res) => {
   const docParts = [HEADER];
   const languageObj = app.get('languages');
   if (languageObj[language]) {
-    docParts.push(`<Dial callerId="${req.query.To}">`);
+    docParts.push(`<Dial callerId="+16464378080">`);
     languageObj[language].slice(0, 10).forEach((number) => {
       // we can only call at most 10 people
       docParts.push(`<Number>${number}</Number>`);
