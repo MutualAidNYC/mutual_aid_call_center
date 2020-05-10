@@ -14,7 +14,8 @@
         "999999",
         "--colors",
         "--inspect-brk",
-        "${workspaceFolder}/test"
+        "${workspaceFolder}/test",
+        "--recursive"
       ],
       "internalConsoleOptions": "openOnSessionStart",
       "skipFiles": ["<node_internals>/**"]
