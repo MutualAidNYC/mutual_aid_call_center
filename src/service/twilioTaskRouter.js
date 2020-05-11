@@ -62,6 +62,26 @@ class TwilioTaskRouter {
     response.message(`${worker.friendlyName}, ${reply}`);
     return response.toString();
   }
+
+  async handleCallAssignment(event) {
+    const workerAttributes = JSON.parse(event.WorkerAttributes);
+    const taskAttributes = JSON.parse(event.TaskAttributes);
+
+    const { client } = this;
+    const callerId = taskAttributes.called;
+    const workerContactNumber = workerAttributes.contact_uri;
+
+    try {
+      await client.calls.create({
+        to: workerContactNumber,
+        from: callerId,
+        machineDetection: 'Enable',
+        url: `https://${config.hostName}/api/agent-connected`,
+      });
+    } catch (error) {
+      logger.error(error);
+    }
+  }
 }
 
 const taskRouter = new TwilioTaskRouter();
