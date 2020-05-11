@@ -2,7 +2,7 @@ const twilio = require('twilio');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
 
-const { MessagingResponse } = twilio.twiml;
+const { MessagingResponse, VoiceResponse } = twilio.twiml;
 
 const fetchActivities = async (obj) => {
   const result = {};
@@ -81,6 +81,82 @@ class TwilioTaskRouter {
     } catch (error) {
       logger.error(error);
     }
+  }
+
+  async _getPendingReservation(workerSid, status) {
+    const pendingReservations = await this._getWorkersReservations(workerSid, {
+      reservationStatus: status,
+    });
+    return pendingReservations[0];
+  }
+
+  async handleAgentConnected(event) {
+    const response = new VoiceResponse();
+    // lets call the assigned worker
+    const workerSid = this.workers[event.Called].sid;
+
+    const pendingReservation = await this._getPendingReservation(
+      workerSid,
+      'pending',
+    );
+    if (!pendingReservation) {
+      response.hangup();
+      return response.toString();
+    }
+    if (event.AnsweredBy === 'human') {
+      logger.info('Human detected');
+      this._updateReservationStatus(
+        workerSid,
+        pendingReservation.sid,
+        'accepted',
+      );
+
+      const { taskSid } = pendingReservation;
+      const task = await this._fetchTask(taskSid);
+      const callerCallSid = JSON.parse(task.attributes).call_sid;
+      const agentCallSid = event.CallSid;
+
+      response.dial().conference({ endConferenceOnExit: true }, callerCallSid);
+      this._updateCall(callerCallSid, { twiml: response.toString() });
+      this._updateCall(agentCallSid, {
+        twiml: response.toString(),
+        statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
+        statusCallbackMethod: 'POST',
+      });
+      return '<Response><Pause length="5"/></Response>';
+    }
+    logger.info('Machine detected');
+    this._updateReservationStatus(
+      workerSid,
+      pendingReservation.sid,
+      'rejected',
+    );
+
+    return response.hangup().toString();
+  }
+
+  _getWorkerObj(workerSid) {
+    return this.workspace.workers(workerSid);
+  }
+
+  _getWorkersReservations(workerSid, reservationCriteriaObj) {
+    return this._getWorkerObj(workerSid).reservations.list(
+      reservationCriteriaObj,
+    );
+  }
+
+  _updateReservationStatus(workerSid, reservationSid, newStatus) {
+    return this._getWorkerObj(workerSid)
+      .reservations(reservationSid)
+      .update({ reservationStatus: newStatus });
+  }
+
+  _fetchTask(taskSid) {
+    return this.workspace.tasks(taskSid).fetch();
+  }
+
+  _updateCall(callSid, updateObj) {
+    return this.client.calls(callSid).update(updateObj);
   }
 }
 

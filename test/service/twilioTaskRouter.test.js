@@ -13,10 +13,12 @@ describe('TwilioTaskRouter class', () => {
     '+12223334444': { friendlyName: 'Jane Doe', sid: 'WKbaloney1' },
     '+15556667777': { friendlyName: 'Bob Marley', sid: 'WKbaloney2' },
   };
+
   beforeEach(() => {
     taskRouter.workers = {};
     taskRouter.activities = {};
   });
+
   describe('init', () => {
     let activityListStub;
     let workersStub;
@@ -64,6 +66,7 @@ describe('TwilioTaskRouter class', () => {
       expect(taskRouter.workers).to.eql(workersObj);
     });
   });
+
   describe('handleIncomingSms', () => {
     let workersStub;
     const defaultWorkspace = taskRouter.workspace;
@@ -144,6 +147,293 @@ describe('TwilioTaskRouter class', () => {
         machineDetection: 'Enable',
         url: `https://${config.hostName}/api/agent-connected`,
       });
+    });
+  });
+
+  describe('handleAgentConnected', () => {
+    let stubs;
+    const createStub = (obj, method) => {
+      const stub = sinon.stub(obj, method);
+      stubs.push(stub);
+      return stub;
+    };
+    let getWorkersReservationsStub;
+    let updateReservationStatusStub;
+    let fetchTaskStub;
+    let updateCallStub;
+    beforeEach(() => {
+      taskRouter.activities = activityObj;
+      taskRouter.workers = workersObj;
+      stubs = [];
+
+      getWorkersReservationsStub = createStub(
+        taskRouter,
+        '_getWorkersReservations',
+      );
+      updateReservationStatusStub = createStub(
+        taskRouter,
+        '_updateReservationStatus',
+      );
+      fetchTaskStub = createStub(taskRouter, '_fetchTask');
+      updateCallStub = createStub(taskRouter, '_updateCall');
+    });
+    afterEach(() => {
+      stubs.forEach((stub) => {
+        stub.restore();
+      });
+    });
+    it('Handles answer by human', async () => {
+      const event = {
+        Called: '+15556667777',
+        AnsweredBy: 'human',
+        CallSid: 'CAbaloney',
+      };
+      const reservations = [
+        {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        },
+      ];
+
+      const task = {
+        attributes:
+          '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+      };
+      const twiml =
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference endConferenceOnExit="true">CAbaloney2</Conference></Dial></Response>';
+
+      getWorkersReservationsStub.resolves(reservations);
+      fetchTaskStub.resolves(task);
+
+      expect(await taskRouter.handleAgentConnected(event)).to.equal(
+        '<Response><Pause length="5"/></Response>',
+      );
+      /* eslint-disable no-unused-expressions */
+      expect(
+        getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+          reservationStatus: 'pending',
+        }),
+      ).to.be.true;
+      expect(
+        updateReservationStatusStub.calledOnceWith(
+          'WKbaloney2',
+          reservations[0].sid,
+          'accepted',
+        ),
+      ).to.be.true;
+      expect(fetchTaskStub.calledOnceWith(reservations[0].taskSid)).to.be.true;
+      expect(updateCallStub.calledWith('CAbaloney2', { twiml })).to.be.true;
+      expect(
+        updateCallStub.calledWith(event.CallSid, {
+          twiml,
+          statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
+          statusCallbackMethod: 'POST',
+        }),
+      ).to.be.true;
+      /* eslint-enable no-unused-expressions */
+    });
+    it('Handles answer by non-human', async () => {
+      const event = {
+        Called: '+15556667777',
+        AnsweredBy: 'machine',
+        CallSid: 'CAbaloney',
+      };
+      const reservations = [
+        {
+          sid: 'WRbaloney',
+          taskSid: 'WTbaloney',
+        },
+      ];
+
+      const task = {
+        attributes:
+          '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+      };
+
+      getWorkersReservationsStub.resolves(reservations);
+      fetchTaskStub.resolves(task);
+
+      expect(await taskRouter.handleAgentConnected(event)).to.equal(
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>',
+      );
+      /* eslint-disable no-unused-expressions */
+      expect(
+        getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+          reservationStatus: 'pending',
+        }),
+      ).to.be.true;
+      expect(
+        updateReservationStatusStub.calledOnceWith(
+          'WKbaloney2',
+          reservations[0].sid,
+          'rejected',
+        ),
+      ).to.be.true;
+      expect(fetchTaskStub.notCalled).to.be.true;
+      expect(updateCallStub.notCalled).to.be.true;
+      expect(updateCallStub.notCalled).to.be.true;
+      /* eslint-enable no-unused-expressions */
+    });
+    it('Handles answer but caller disconnected', async () => {
+      const event = {
+        Called: '+15556667777',
+        AnsweredBy: 'machine',
+        CallSid: 'CAbaloney',
+      };
+      const reservations = [];
+
+      const task = {
+        attributes:
+          '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+      };
+
+      getWorkersReservationsStub.resolves(reservations);
+      fetchTaskStub.resolves(task);
+
+      expect(await taskRouter.handleAgentConnected(event)).to.equal(
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>',
+      );
+      /* eslint-disable no-unused-expressions */
+      expect(
+        getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+          reservationStatus: 'pending',
+        }),
+      ).to.be.true;
+      expect(updateReservationStatusStub.notCalled).to.be.true;
+      expect(fetchTaskStub.notCalled).to.be.true;
+      expect(updateCallStub.notCalled).to.be.true;
+      expect(updateCallStub.notCalled).to.be.true;
+      /* eslint-enable no-unused-expressions */
+    });
+  });
+
+  describe('_getWorkerObj', () => {
+    let stub;
+    const originalWorkspace = taskRouter.workspace;
+    const fakeWorker = {};
+    const sid = 'somesid';
+    before(() => {
+      stub = sinon.stub();
+      taskRouter.workspace = { workers: stub };
+      stub.returns(fakeWorker);
+    });
+    after(() => {
+      taskRouter.workspace = originalWorkspace;
+    });
+    it('Returns a worker object', () => {
+      expect(taskRouter._getWorkerObj(sid)).to.equal(fakeWorker);
+      expect(stub.firstCall.firstArg).to.equal(sid);
+    });
+  });
+
+  describe('_getWorkersReservations', () => {
+    let getWorkerObjStub;
+    const listStub = sinon.stub();
+    const reservationObj = { list: listStub };
+    const workerObj = { reservations: reservationObj };
+    const sid = 'somesid';
+    const criteria = {};
+    const reservations = [];
+    before(() => {
+      getWorkerObjStub = sinon.stub(taskRouter, '_getWorkerObj');
+      getWorkerObjStub.returns(workerObj);
+      listStub.returns(reservations);
+    });
+    after(() => {
+      getWorkerObjStub.restore();
+    });
+    it('Returns an array of reservations', () => {
+      expect(taskRouter._getWorkersReservations(sid, criteria)).to.equal(
+        reservations,
+      );
+      expect(getWorkerObjStub.firstCall.firstArg).to.equal(sid);
+      expect(listStub.firstCall.firstArg).to.equal(criteria);
+    });
+  });
+
+  describe('_updateReservationStatus', () => {
+    let getWorkerObjStub;
+    before(() => {
+      getWorkerObjStub = sinon.stub(taskRouter, '_getWorkerObj');
+    });
+    after(() => {
+      getWorkerObjStub.restore();
+    });
+    it('Updates a reservation', async () => {
+      const reservationStub = sinon.stub();
+      const workerObj = { reservations: reservationStub };
+      const updateStub = sinon.stub();
+      const reservationObj = { update: updateStub };
+      const updateObj = {};
+      const workerSid = 'someSid';
+      const reservationSid = 'someReservationSid';
+      const newStatus = 'someStatus';
+      const newStatusObj = { reservationStatus: newStatus };
+
+      getWorkerObjStub.returns(workerObj);
+      reservationStub.returns(reservationObj);
+      updateStub.resolves(updateObj);
+
+      expect(
+        await taskRouter._updateReservationStatus(
+          workerSid,
+          reservationSid,
+          newStatus,
+        ),
+      ).to.equal(updateObj);
+      expect(getWorkerObjStub.firstCall.firstArg).to.equal(workerSid);
+      expect(reservationStub.firstCall.firstArg).to.equal(reservationSid);
+      expect(updateStub.firstCall.firstArg).to.eql(newStatusObj);
+    });
+  });
+
+  describe('_fetchTask', () => {
+    const originalWorkspace = taskRouter.workspace;
+    const task = {};
+    const taskSid = 'some task sid';
+    const tasksStub = sinon.stub();
+    const fetchStub = sinon.stub();
+    before(() => {
+      taskRouter.workspace = { tasks: tasksStub };
+
+      tasksStub.returns({ fetch: fetchStub });
+      fetchStub.resolves(task);
+    });
+    after(() => {
+      taskRouter.workspace = originalWorkspace;
+    });
+    it('Fetches a task', async () => {
+      expect(await taskRouter._fetchTask(taskSid)).to.equal(task);
+      expect(tasksStub.firstCall.firstArg).to.equal(taskSid);
+      // eslint-disable-next-line no-unused-expressions
+      expect(fetchStub.calledOnceWithExactly()).to.be.true;
+    });
+  });
+
+  describe('_updateCall', () => {
+    const originalClient = taskRouter.client;
+    const callsStub = sinon.stub();
+    const updateStub = sinon.stub();
+    const callSid = 'some call sid';
+    const updateObj = {};
+    const updateReturnObj = {};
+    let callsObj;
+    before(() => {
+      taskRouter.client = { calls: callsStub };
+      callsObj = { update: updateStub };
+
+      callsStub.returns(callsObj);
+      updateStub.resolves(updateReturnObj);
+    });
+    after(() => {
+      taskRouter.client = originalClient;
+    });
+    it('Fetches a task', async () => {
+      expect(await taskRouter._updateCall(callSid, updateObj)).to.equal(
+        updateReturnObj,
+      );
+      expect(callsStub.firstCall.firstArg).to.equal(callSid);
+      expect(updateStub.firstCall.firstArg).to.equal(updateObj);
     });
   });
 });
