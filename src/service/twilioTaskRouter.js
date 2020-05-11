@@ -1,6 +1,8 @@
 const twilio = require('twilio');
 const config = require('../config');
-// const { logger } = require('../loaders/logger');
+const { logger } = require('../loaders/logger');
+
+const { MessagingResponse } = twilio.twiml;
 
 const fetchActivities = async (obj) => {
   const result = {};
@@ -39,6 +41,26 @@ class TwilioTaskRouter {
   async init() {
     this.activities = await fetchActivities(this);
     this.workers = await fetchWorkers(this);
+  }
+
+  async handleIncomingSms(event) {
+    const body = event.Body.toLowerCase().trim();
+    const targetActivity = body === 'on' ? 'Available' : 'Offline';
+
+    const { workspace } = this;
+    const activitySid = this.activities[targetActivity];
+    const worker = this.workers[event.From];
+
+    const updatedWorker = await workspace
+      .workers(worker.sid)
+      .update({ activitySid });
+    logger.info(updatedWorker.activityName);
+
+    const response = new MessagingResponse();
+    const reply =
+      targetActivity === 'Offline' ? 'You are signed out' : 'You are signed in';
+    response.message(`${worker.friendlyName}, ${reply}`);
+    return response.toString();
   }
 }
 

@@ -1,11 +1,13 @@
 const twilio = require('twilio');
 const app = require('../../server');
-const { logger } = require('../../loaders/logger');
+const taskRouter = require('../../service/twilioTaskRouter');
+const config = require('../../config');
 
-const client = twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN);
+// to be removed later when no longer in use
+const client = twilio(config.twilio.accountSid, config.twilio.authToken);
 const setTwilioInfoToApp = async (expressApp) => {
   const workspace = await client.taskrouter.workspaces(
-    process.env.WORKSPACE_SID,
+    config.twilio.workspaceSid,
   );
   const twilioObject = {
     twilio,
@@ -39,24 +41,8 @@ const setTwilioInfoToApp = async (expressApp) => {
 };
 
 app.post('/api/sms-incoming', async (req, res) => {
-  const twilioObject = app.get('twilio');
-  const event = req.body;
-  const body = event.Body.toLowerCase().trim();
-  const targetActivity = body === 'on' ? 'Available' : 'Offline';
-
-  const { workspace } = twilioObject;
-  const activitySid = twilioObject.workspaceInfo.activities[targetActivity];
-  const worker = twilioObject.workspaceInfo.workers[event.From];
-  const updatedWorker = await workspace
-    .workers(worker.sid)
-    .update({ activitySid });
-  logger.info(updatedWorker.activityName);
-
-  const response = new twilio.twiml.MessagingResponse();
-  const reply =
-    targetActivity === 'offline' ? 'You are signed out' : 'You are signed in';
-  response.message(`${worker.friendlyName}, ${reply}`);
-  res.status(200).send(response.toString());
+  const responseBody = await taskRouter.handleIncomingSms(req.body);
+  res.status(200).send(responseBody);
 });
 
 module.exports = {

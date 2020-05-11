@@ -21,14 +21,6 @@ const sampleOutput = JSON.parse(
 );
 
 describe('api/schedule', () => {
-  // beforeEach(() => {
-  //   // sandbox = sinon.sandbox.create();
-  //   // server = sandbox.useFakeServer();
-  // });
-  // afterEach(() => {
-  //   server.restore();
-  //   sandbox.restore();
-  // });
   describe('helper functions', () => {
     describe('transformSchedule function', () => {
       it('Should transform the json into the right format', () => {
