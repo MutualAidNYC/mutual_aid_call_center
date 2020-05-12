@@ -12,4 +12,5 @@ module.exports = {
     workspaceSid: process.env.WORKSPACE_SID || 'bogusWorkspace',
   },
   hostName: process.env.HOST_NAME || 'someHostName',
+  isProduction: process.env.NODE_ENV === 'production',
 };
