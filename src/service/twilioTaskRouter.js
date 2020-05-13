@@ -32,7 +32,7 @@ const findMostRecentlyUpdatedReservation = (reservations) => {
   reservations.sort((res1, res2) => {
     const res1DateUpdated = moment(res1.dateUpdated);
     const res2DateUpdated = moment(res2.dateUpdated);
-    return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : 0;
+    return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : -1;
   });
   return reservations[0];
 };

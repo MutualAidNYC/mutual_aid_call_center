@@ -6,7 +6,7 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
 
 # setup for local development
 
-1. Have NodeJS 10.X or greater installed
+1. Have NodeJS 12.16.x or greater installed
 2. Copy `.env-sample` to `.env` (.env is git ignored)
    - `$ cp .env-sample .env`
 3. Replace the values in your new `.env` file
