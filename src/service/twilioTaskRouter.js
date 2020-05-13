@@ -138,36 +138,34 @@ class TwilioTaskRouter {
 
   async handleWorkerBridgeDisconnect(event) {
     const workerSid = this.workers[event.Called].sid;
-    const workspace = this.client.taskrouter.workspaces(
-      config.twilio.workspaceSid,
-    );
 
-    const worker = workspace.workers(workerSid);
-
-    const reservations = await worker.reservations.list({
-      limit: 20,
+    const reservations = await this._getWorkersReservations(workerSid, {
       reservationStatus: 'accepted',
     });
+
     if (reservations.length > 0) {
-      // lets sort oldest to newest
+      logger.info('reservations: %o', reservations);
+      // lets sort newest first
       reservations.sort((res1, res2) => {
-        const res1DateCreated = moment(res1.dateCreated);
-        const res2DateCreated = moment(res2.dateCreated);
-        return res1DateCreated.isBefore(res2DateCreated) ? 1 : 0;
+        const res1DateUpdated = moment(res1.dateUpdated);
+        const res2DateUpdated = moment(res2.dateUpdated);
+        return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : 0;
       });
       const [reservation] = reservations;
-      const task = await workspace.tasks(reservation.taskSid).fetch();
 
-      task
-        .update({
-          assignmentStatus: 'completed',
-          reason: 'Call with agent ended after one or the other party hung up',
-        })
-        .then(() => logger.info('Task marked completed'));
+      const status = 'completed';
+      const reason =
+        'Call with agent ended after one or the other party hung up';
+      await this._updateTask(reservation.taskSid, status, reason);
+      logger.info('Task marked completed');
     } else {
       logger.error('No task found!');
     }
-    return new VoiceResponse().toString();
+  }
+
+  async _updateTask(taskSid, assignmentStatus, reason) {
+    const task = await this._fetchTask(taskSid);
+    return task.update({ assignmentStatus, reason });
   }
 
   _getWorkerObj(workerSid) {

@@ -18,12 +18,12 @@ describe('GET /api/worker-bridge-disconnect', () => {
       Body: 'On',
       From: '+15556667777',
     };
-    const twiml = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
-    stub.withArgs(event).returns(twiml);
+
     const res = await request(app)
       .post('/api/worker-bridge-disconnect')
       .send(event);
     expect(res.status).to.equal(200);
-    expect(res.text).to.equal(twiml);
+    expect(res.text).to.equal('OK');
+    expect(stub.firstCall.firstArg).to.eql(event);
   });
 });

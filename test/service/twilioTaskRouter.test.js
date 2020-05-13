@@ -124,10 +124,6 @@ describe('TwilioTaskRouter class', () => {
       taskRouter.activities = activityObj;
       taskRouter.workers = workersObj;
       createStub = sinon.stub(taskRouter.client.calls, 'create');
-      // workersStub = sinon.stub();
-      // updateStub = sinon.stub();
-      // taskRouter.workspace = {};
-      // taskRouter.workspace.workers = workersStub;
     });
     afterEach(() => {
       createStub.restore();
@@ -304,6 +300,43 @@ describe('TwilioTaskRouter class', () => {
       expect(updateCallStub.notCalled).to.be.true;
       expect(updateCallStub.notCalled).to.be.true;
       /* eslint-enable no-unused-expressions */
+    });
+  });
+
+  describe('handleWorkerBridgeDisconnect', () => {
+    let getWorkerReservationsStub;
+    let updateTaskStub;
+    before(() => {
+      const reservations = [
+        {
+          dateUpdated: '2020-05-13T02:27:48.000Z',
+          taskSid: 'WTtasksid1',
+        },
+        {
+          dateUpdated: '2020-05-13T02:28:48.000Z',
+          taskSid: 'WTtasksid2',
+        },
+        {
+          dateUpdated: '2020-05-13T02:30:48.000Z',
+          taskSid: 'WTtasksid3',
+        },
+      ];
+      getWorkerReservationsStub = sinon.stub(
+        taskRouter,
+        '_getWorkersReservations',
+      );
+      updateTaskStub = sinon.stub(taskRouter, '_updateTask');
+      getWorkerReservationsStub.returns(reservations);
+      updateTaskStub.resolves();
+    });
+    after(() => {
+      getWorkerReservationsStub.restore();
+      updateTaskStub.restore();
+    });
+    it('Marks the task as complete', async () => {
+      taskRouter.workers = workersObj;
+      await taskRouter.handleWorkerBridgeDisconnect({ Called: '+15556667777' });
+      expect(updateTaskStub.firstCall.firstArg).to.be.equal('WTtasksid3');
     });
   });
 
