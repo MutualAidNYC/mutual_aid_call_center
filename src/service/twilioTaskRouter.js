@@ -2,6 +2,7 @@ const twilio = require('twilio');
 const moment = require('moment-timezone');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
+const airtableController = require('./airtableController');
 
 const { MessagingResponse, VoiceResponse } = twilio.twiml;
 
@@ -28,6 +29,10 @@ const fetchWorkers = async (obj) => {
   return result;
 };
 
+const saveVmToDb = (url, language, phone, callSid) => {
+  return airtableController.addVmToDb(callSid, url, language, phone.slice(2));
+};
+
 const findMostRecentlyUpdatedReservation = (reservations) => {
   reservations.sort((res1, res2) => {
     const res1DateUpdated = moment(res1.dateUpdated);
@@ -48,56 +53,62 @@ class TwilioTaskRouter {
     this.workers = {};
   }
 
-  async init() {
-    this.activities = await fetchActivities(this);
-    this.workers = await fetchWorkers(this);
-  }
-
-  async handleIncomingSms(event) {
-    const body = event.Body.toLowerCase().trim();
-    const targetActivity = body === 'on' ? 'Available' : 'Offline';
-
-    const { workspace } = this;
-    const activitySid = this.activities[targetActivity];
-    const worker = this.workers[event.From];
-
-    const updatedWorker = await workspace
-      .workers(worker.sid)
-      .update({ activitySid });
-    logger.info(updatedWorker.activityName);
-
-    const response = new MessagingResponse();
-    const reply =
-      targetActivity === 'Offline' ? 'You are signed out' : 'You are signed in';
-    response.message(`${worker.friendlyName}, ${reply}`);
-    return response.toString();
-  }
-
-  async handleCallAssignment(event) {
-    const workerAttributes = JSON.parse(event.WorkerAttributes);
-    const taskAttributes = JSON.parse(event.TaskAttributes);
-
-    const { client } = this;
-    const callerId = taskAttributes.called;
-    const workerContactNumber = workerAttributes.contact_uri;
-
-    try {
-      await client.calls.create({
-        to: workerContactNumber,
-        from: callerId,
-        machineDetection: 'Enable',
-        url: `https://${config.hostName}/api/agent-connected`,
-      });
-    } catch (error) {
-      logger.error(error);
-    }
-  }
-
   async _getPendingReservation(workerSid, status) {
     const pendingReservations = await this._getWorkersReservations(workerSid, {
       reservationStatus: status,
     });
     return pendingReservations[0];
+  }
+
+  _fetchTask(taskSid) {
+    return this.workspace.tasks(taskSid).fetch();
+  }
+
+  _fetchTaskReservations(taskSid, ReservationStatus) {
+    return this.workspace
+      .tasks(taskSid)
+      .reservations.list({ ReservationStatus });
+  }
+
+  async _fetchTaskForCallSid(callSid) {
+    const [task] = await this.workspace.tasks.list({
+      evaluateTaskAttributes: `call_sid == "${callSid}"`,
+    });
+    return task;
+  }
+
+  async _updateTask(taskSid, assignmentStatus, reason) {
+    const task = await this._fetchTask(taskSid);
+    return task.update({ assignmentStatus, reason });
+  }
+
+  _getWorkerObj(workerSid) {
+    return this.workspace.workers(workerSid);
+  }
+
+  _getWorkersReservations(workerSid, reservationCriteriaObj) {
+    return this._getWorkerObj(workerSid).reservations.list(
+      reservationCriteriaObj,
+    );
+  }
+
+  _updateCall(callSid, updateObj) {
+    return this.client.calls(callSid).update(updateObj);
+  }
+
+  _updateReservationStatus(workerSid, reservationSid, newStatus) {
+    return this._getWorkerObj(workerSid)
+      .reservations(reservationSid)
+      .update({ reservationStatus: newStatus });
+  }
+
+  deleteRecording(recordingSid) {
+    this.client.recordings(recordingSid).remove();
+  }
+
+  async init() {
+    this.activities = await fetchActivities(this);
+    this.workers = await fetchWorkers(this);
   }
 
   async handleAgentConnected(event) {
@@ -135,7 +146,7 @@ class TwilioTaskRouter {
       });
       return '<Response><Pause length="5"/></Response>';
     }
-    logger.info('Machine detected');
+    logger.info('AnsweredBy: %s', event.AnsweredBy);
     this._updateReservationStatus(
       workerSid,
       pendingReservation.sid,
@@ -143,6 +154,70 @@ class TwilioTaskRouter {
     );
 
     return response.hangup().toString();
+  }
+
+  async handleCallAssignment(event) {
+    if (event.WorkerSid === config.twilio.vmWorkerSid) {
+      this.sendToVm(event);
+      return;
+    }
+    const workerAttributes = JSON.parse(event.WorkerAttributes);
+    const taskAttributes = JSON.parse(event.TaskAttributes);
+
+    const { client } = this;
+    const callerId = taskAttributes.called;
+    const workerContactNumber = workerAttributes.contact_uri;
+
+    try {
+      await client.calls.create({
+        to: workerContactNumber,
+        from: callerId,
+        machineDetection: 'Enable',
+        url: `https://${config.hostName}/api/agent-connected`,
+      });
+    } catch (error) {
+      logger.error(error);
+    }
+  }
+
+  async handleIncomingSms(event) {
+    const body = event.Body.toLowerCase().trim();
+    const targetActivity = body === 'on' ? 'Available' : 'Offline';
+
+    const { workspace } = this;
+    const activitySid = this.activities[targetActivity];
+    const worker = this.workers[event.From];
+
+    await workspace.workers(worker.sid).update({ activitySid });
+
+    const response = new MessagingResponse();
+    const reply =
+      targetActivity === 'Offline' ? 'You are signed out' : 'You are signed in';
+    response.message(`${worker.friendlyName}, ${reply}`);
+    return response.toString();
+  }
+
+  async handleVmRecordingEnded(event) {
+    const task = await this._fetchTaskForCallSid(event.CallSid);
+    const attributes = JSON.parse(task.attributes);
+    // logger.info(attributes, 'attributes: ');
+    saveVmToDb(
+      event.RecordingUrl,
+      attributes.selected_language,
+      attributes.caller,
+      event.RecordingSid,
+    );
+
+    this._updateTask(task.sid, 'completed', 'VM recorded');
+
+    const response = new VoiceResponse();
+    if (event.CallStatus === 'in-progress') {
+      response.say(
+        "We have received your voicemail, we'll get back to you soon. Goodbye",
+      );
+      response.hangup();
+    }
+    return response.toString();
   }
 
   async handleWorkerBridgeDisconnect(event) {
@@ -158,39 +233,32 @@ class TwilioTaskRouter {
       const reason =
         'Call with agent ended after one or the other party hung up';
       await this._updateTask(reservation.taskSid, status, reason);
-      logger.info('Task marked completed');
     } else {
       logger.error('No task found!');
     }
   }
 
-  async _updateTask(taskSid, assignmentStatus, reason) {
-    const task = await this._fetchTask(taskSid);
-    return task.update({ assignmentStatus, reason });
-  }
-
-  _getWorkerObj(workerSid) {
-    return this.workspace.workers(workerSid);
-  }
-
-  _getWorkersReservations(workerSid, reservationCriteriaObj) {
-    return this._getWorkerObj(workerSid).reservations.list(
-      reservationCriteriaObj,
+  sendToVm(event) {
+    this._updateReservationStatus(
+      event.WorkerSid,
+      event.ReservationSid,
+      'accepted',
     );
-  }
+    const response = new twilio.twiml.VoiceResponse();
+    response.say(
+      'Please leave a message at the beep.\nPress the star key when finished.',
+    );
+    response.record({
+      action: `https://${config.hostName}/api/vm-recording-ended`,
+      method: 'POST',
+      maxLength: 20,
+      finishOnKey: '*',
+    });
+    response.say('I did not receive a recording');
 
-  _updateReservationStatus(workerSid, reservationSid, newStatus) {
-    return this._getWorkerObj(workerSid)
-      .reservations(reservationSid)
-      .update({ reservationStatus: newStatus });
-  }
-
-  _fetchTask(taskSid) {
-    return this.workspace.tasks(taskSid).fetch();
-  }
-
-  _updateCall(callSid, updateObj) {
-    return this.client.calls(callSid).update(updateObj);
+    this._updateCall(JSON.parse(event.TaskAttributes).call_sid, {
+      twiml: response.toString(),
+    });
   }
 }
 

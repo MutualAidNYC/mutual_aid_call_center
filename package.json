@@ -7,7 +7,7 @@
     "test": "mocha --recursive",
     "debug": "node --nolazy --inspect-brk=9229 src/app.js",
     "start": "nodemon src/app.js | pino-pretty -t -i hostname,pid",
-    "coverage": "nyc --reporter=text --reporter=html mocha --recursive --exit --timeout 15000"
+    "coverage": "nyc --reporter=text --reporter=html mocha --recursive --exit --timeout 15000 && open coverage/index.html"
   },
   "repository": {
     "type": "git",
