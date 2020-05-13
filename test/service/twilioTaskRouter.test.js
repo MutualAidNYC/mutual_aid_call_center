@@ -469,4 +469,27 @@ describe('TwilioTaskRouter class', () => {
       expect(updateStub.firstCall.firstArg).to.equal(updateObj);
     });
   });
+
+  describe('_updateTask', () => {
+    let fetchTaskStub;
+    const updateStub = sinon.stub();
+    const taskSid = '12345678';
+    const status = 'hmmmmmm';
+    const reason = "I don't know";
+    before(() => {
+      fetchTaskStub = sinon.stub(taskRouter, '_fetchTask');
+      fetchTaskStub.resolves({ update: updateStub });
+    });
+    after(() => {
+      fetchTaskStub.restore();
+    });
+    it('Fetches a task', async () => {
+      await taskRouter._updateTask(taskSid, status, reason);
+      expect(fetchTaskStub.firstCall.firstArg).to.equal(taskSid);
+      expect(updateStub.firstCall.firstArg).to.eql({
+        assignmentStatus: status,
+        reason,
+      });
+    });
+  });
 });

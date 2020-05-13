@@ -28,6 +28,15 @@ const fetchWorkers = async (obj) => {
   return result;
 };
 
+const findMostRecentlyUpdatedReservation = (reservations) => {
+  reservations.sort((res1, res2) => {
+    const res1DateUpdated = moment(res1.dateUpdated);
+    const res2DateUpdated = moment(res2.dateUpdated);
+    return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : 0;
+  });
+  return reservations[0];
+};
+
 class TwilioTaskRouter {
   constructor() {
     this.twilio = twilio;
@@ -144,15 +153,7 @@ class TwilioTaskRouter {
     });
 
     if (reservations.length > 0) {
-      logger.info('reservations: %o', reservations);
-      // lets sort newest first
-      reservations.sort((res1, res2) => {
-        const res1DateUpdated = moment(res1.dateUpdated);
-        const res2DateUpdated = moment(res2.dateUpdated);
-        return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : 0;
-      });
-      const [reservation] = reservations;
-
+      const reservation = findMostRecentlyUpdatedReservation(reservations);
       const status = 'completed';
       const reason =
         'Call with agent ended after one or the other party hung up';
