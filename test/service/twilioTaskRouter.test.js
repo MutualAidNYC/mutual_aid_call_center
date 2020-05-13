@@ -124,10 +124,6 @@ describe('TwilioTaskRouter class', () => {
       taskRouter.activities = activityObj;
       taskRouter.workers = workersObj;
       createStub = sinon.stub(taskRouter.client.calls, 'create');
-      // workersStub = sinon.stub();
-      // updateStub = sinon.stub();
-      // taskRouter.workspace = {};
-      // taskRouter.workspace.workers = workersStub;
     });
     afterEach(() => {
       createStub.restore();
@@ -307,6 +303,43 @@ describe('TwilioTaskRouter class', () => {
     });
   });
 
+  describe('handleWorkerBridgeDisconnect', () => {
+    let getWorkerReservationsStub;
+    let updateTaskStub;
+    before(() => {
+      const reservations = [
+        {
+          dateUpdated: '2020-05-13T02:27:48.000Z',
+          taskSid: 'WTtasksid1',
+        },
+        {
+          dateUpdated: '2020-05-13T02:28:48.000Z',
+          taskSid: 'WTtasksid2',
+        },
+        {
+          dateUpdated: '2020-05-13T02:30:48.000Z',
+          taskSid: 'WTtasksid3',
+        },
+      ];
+      getWorkerReservationsStub = sinon.stub(
+        taskRouter,
+        '_getWorkersReservations',
+      );
+      updateTaskStub = sinon.stub(taskRouter, '_updateTask');
+      getWorkerReservationsStub.returns(reservations);
+      updateTaskStub.resolves();
+    });
+    after(() => {
+      getWorkerReservationsStub.restore();
+      updateTaskStub.restore();
+    });
+    it('Marks the task as complete', async () => {
+      taskRouter.workers = workersObj;
+      await taskRouter.handleWorkerBridgeDisconnect({ Called: '+15556667777' });
+      expect(updateTaskStub.firstCall.firstArg).to.be.equal('WTtasksid3');
+    });
+  });
+
   describe('_getWorkerObj', () => {
     let stub;
     const originalWorkspace = taskRouter.workspace;
@@ -434,6 +467,29 @@ describe('TwilioTaskRouter class', () => {
       );
       expect(callsStub.firstCall.firstArg).to.equal(callSid);
       expect(updateStub.firstCall.firstArg).to.equal(updateObj);
+    });
+  });
+
+  describe('_updateTask', () => {
+    let fetchTaskStub;
+    const updateStub = sinon.stub();
+    const taskSid = '12345678';
+    const status = 'hmmmmmm';
+    const reason = "I don't know";
+    before(() => {
+      fetchTaskStub = sinon.stub(taskRouter, '_fetchTask');
+      fetchTaskStub.resolves({ update: updateStub });
+    });
+    after(() => {
+      fetchTaskStub.restore();
+    });
+    it('Fetches a task', async () => {
+      await taskRouter._updateTask(taskSid, status, reason);
+      expect(fetchTaskStub.firstCall.firstArg).to.equal(taskSid);
+      expect(updateStub.firstCall.firstArg).to.eql({
+        assignmentStatus: status,
+        reason,
+      });
     });
   });
 });

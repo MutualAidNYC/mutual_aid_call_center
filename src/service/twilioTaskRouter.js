@@ -1,4 +1,5 @@
 const twilio = require('twilio');
+const moment = require('moment-timezone');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
 
@@ -25,6 +26,15 @@ const fetchWorkers = async (obj) => {
     };
   });
   return result;
+};
+
+const findMostRecentlyUpdatedReservation = (reservations) => {
+  reservations.sort((res1, res2) => {
+    const res1DateUpdated = moment(res1.dateUpdated);
+    const res2DateUpdated = moment(res2.dateUpdated);
+    return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : -1;
+  });
+  return reservations[0];
 };
 
 class TwilioTaskRouter {
@@ -133,6 +143,30 @@ class TwilioTaskRouter {
     );
 
     return response.hangup().toString();
+  }
+
+  async handleWorkerBridgeDisconnect(event) {
+    const workerSid = this.workers[event.Called].sid;
+
+    const reservations = await this._getWorkersReservations(workerSid, {
+      reservationStatus: 'accepted',
+    });
+
+    if (reservations.length > 0) {
+      const reservation = findMostRecentlyUpdatedReservation(reservations);
+      const status = 'completed';
+      const reason =
+        'Call with agent ended after one or the other party hung up';
+      await this._updateTask(reservation.taskSid, status, reason);
+      logger.info('Task marked completed');
+    } else {
+      logger.error('No task found!');
+    }
+  }
+
+  async _updateTask(taskSid, assignmentStatus, reason) {
+    const task = await this._fetchTask(taskSid);
+    return task.update({ assignmentStatus, reason });
   }
 
   _getWorkerObj(workerSid) {
