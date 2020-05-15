@@ -25,8 +25,6 @@ const startUp = async () => {
   await setSchedule();
   logger.info('Phone schedule loaded');
   await initLoaders();
-  // await setTwilioInfoToApp();
-  // logger.info('Twillio loaded');
   app.listen(port, onListen);
 
   // event loop, we want these things to happen at a slow poll
@@ -35,7 +33,7 @@ const startUp = async () => {
   }, process.env.AIRTABLE_DELAY);
 };
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.send('Hello World!!');
 });
 
