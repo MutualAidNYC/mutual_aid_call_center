@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
+const axios = require('axios');
 const config = require('../../src/config');
 const airtableController = require('../../src/service/airtableController');
 const taskRouter = require('../../src/service/twilioTaskRouter');
@@ -231,6 +232,135 @@ describe('airtableController', () => {
       expect(pageProcessor(undefined, records)).to.equal(undefined);
       expect(deleteRecordingStub.notCalled).to.equal(true);
       expect(updateRecordStub.notCalled).to.equal(true);
+    });
+  });
+
+  describe('fetchAllRecordsFromTable', () => {
+    const table = 'General Hours';
+    const page1 = {
+      records: [
+        {
+          id: 'recXXXXXXXXXXXXX',
+          fields: {
+            Day: 'Monday',
+          },
+          createdTime: '2020-05-01T00:35:45.000Z',
+        },
+        {
+          id: 'reXXXXXXXXXXXXXXX2',
+          fields: {
+            Day: 'Tuesday',
+          },
+          createdTime: '2020-05-01T00:35:53.000Z',
+        },
+      ],
+      offset: 'reXXXXXXXXXXXXXXX2',
+    };
+    const page2 = {
+      records: [
+        {
+          id: 'recXXXXXXXXXXXXXXX3',
+          fields: {
+            Day: 'Wednesday',
+          },
+          createdTime: '2020-05-01T00:35:59.000Z',
+        },
+      ],
+    };
+    const fullList = [
+      {
+        id: 'recXXXXXXXXXXXXX',
+        fields: {
+          Day: 'Monday',
+        },
+        createdTime: '2020-05-01T00:35:45.000Z',
+      },
+      {
+        id: 'reXXXXXXXXXXXXXXX2',
+        fields: {
+          Day: 'Tuesday',
+        },
+        createdTime: '2020-05-01T00:35:53.000Z',
+      },
+      {
+        id: 'recXXXXXXXXXXXXXXX3',
+        fields: {
+          Day: 'Wednesday',
+        },
+        createdTime: '2020-05-01T00:35:59.000Z',
+      },
+    ];
+    let axiosStub;
+    let clock;
+    const axiosConfig1 = {
+      method: 'get',
+      url:
+        'https://api.airtable.com/v0/appHH8ovgf8EcybFz/General%20Hours?view=Grid%20view',
+      headers: {
+        Authorization: `Bearer ${config.airtable.apiKey}`,
+      },
+      data: {
+        view: 'Grid%20view',
+      },
+    };
+    const axiosConfig2 = {
+      method: 'get',
+      url:
+        'https://api.airtable.com/v0/appHH8ovgf8EcybFz/General%20Hours?view=Grid%20view',
+      headers: {
+        Authorization: `Bearer ${config.airtable.apiKey}`,
+      },
+      data: {
+        view: 'Grid%20view',
+        offset: 'reXXXXXXXXXXXXXXX2',
+      },
+    };
+    beforeEach(() => {
+      axiosStub = sinon.stub(axios, 'request');
+    });
+    afterEach(() => {
+      axiosStub.restore();
+      if (clock) clock.restore();
+    });
+    it('Fetches all records from table', async () => {
+      axiosStub.onFirstCall().resolves({ data: page1 });
+      axiosStub.onSecondCall().resolves({ data: page2 });
+
+      expect(
+        await airtableController.fetchAllRecordsFromTable(
+          table,
+          config.airtable.phoneBase,
+        ),
+      ).to.eql(fullList);
+      expect(axiosStub.firstCall.firstArg).to.eql(axiosConfig1);
+      expect(axiosStub.secondCall.firstArg).to.eql(axiosConfig2);
+      expect(axiosStub.calledTwice).to.equal(true);
+    });
+    it('Is rate limited', async () => {
+      axiosStub.onFirstCall().resolves({ data: page1 });
+      axiosStub.onSecondCall().resolves({ data: page2 });
+
+      clock = sinon.useFakeTimers();
+      airtableController.fetchAllRecordsFromTable(
+        table,
+        config.airtable.phoneBase,
+      );
+      clock.tick(200);
+      await clock.tickAsync(49);
+      expect(axiosStub.calledOnce).to.equal(true);
+    });
+    it('Waits 30 or more on an error', async () => {
+      clock = sinon.useFakeTimers();
+      axiosStub.throws();
+      airtableController.fetchAllRecordsFromTable(
+        table,
+        config.airtable.phoneBase,
+      );
+      clock.tick(29500);
+      await clock.tickAsync(499);
+      expect(axiosStub.calledOnce).to.equal(true);
+      await clock.tickAsync(100);
+      expect(axiosStub.calledTwice).to.equal(true);
     });
   });
 });
