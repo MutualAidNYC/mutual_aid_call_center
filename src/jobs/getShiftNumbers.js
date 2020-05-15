@@ -3,17 +3,13 @@ const moment = require('moment-timezone');
 const Airtable = require('airtable');
 const app = require('../server');
 
-let isProd = true;
 if (process.env.NODE_ENV !== 'production') {
   // load the local .env file
   dotenv.config();
-  isProd = false;
 }
 
 const apiKey = process.env.AIRTABLE_API_KEY;
-const baseId = isProd
-  ? process.env.AIRTABLE_PROD_PHONE_BASE
-  : process.env.AIRTABLE_DEV_PHONE_BASE;
+const baseId = process.env.AIRTABLE_PROD_PHONE_BASE;
 const base = new Airtable({ apiKey }).base(baseId);
 
 const todayAt = (hour) => {

@@ -2,8 +2,7 @@ const dotenv = require('dotenv');
 const axios = require('axios');
 const app = require('../../server');
 
-const DEV_SCHEDULE = 'devSchedule';
-const PROD_SCHEDULE = 'prodSchedule';
+const SCHEDULE = 'schedule';
 
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config(); // load the local .env file
@@ -69,10 +68,7 @@ const getScheduleFromBase = (base) => {
   };
 };
 
-const getDevSchedule = getScheduleFromBase(process.env.AIRTABLE_DEV_PHONE_BASE);
-const getProdSchedule = getScheduleFromBase(
-  process.env.AIRTABLE_PROD_PHONE_BASE,
-);
+const getTheSchedule = getScheduleFromBase(process.env.PHONE_BASE);
 
 /**
  * sets within express the development schedule
@@ -81,21 +77,17 @@ const getProdSchedule = getScheduleFromBase(
  * invoked returns a schedule object
  * @return {void}
  */
-const setDevSchedule = async (getSchedule = getDevSchedule) => {
-  const schedule = await getSchedule();
-  app.set(DEV_SCHEDULE, schedule);
-};
 
 /**
- * sets within express the production schedule
+ * sets within express the schedule
  * @author Aaron Young <hi@aaronyoung.io>
  * @param {Function} getSchedule - defaults to a function that when
  * invoked returns a schedule object
  * @return {void}
  */
-const setProdSchedule = async (getSchedule = getProdSchedule) => {
+const setSchedule = async (getSchedule = getTheSchedule) => {
   const schedule = await getSchedule();
-  app.set(PROD_SCHEDULE, schedule);
+  app.set(SCHEDULE, schedule);
 };
 
 /**
@@ -106,23 +98,17 @@ const setProdSchedule = async (getSchedule = getProdSchedule) => {
  * @param {Object} res - an express response object
  * @return {void}
  */
-const getDevelopment = async (_req, res) => {
-  const schedule = app.get(DEV_SCHEDULE);
-  res.status(200).json(schedule);
-};
-
-app.get('/api/schedule/development', getDevelopment);
 
 /**
  * An express route function that matches the required express signature
- * This will respond with a production schedule
+ * This will respond with a schedule
  * @author Aaron Young <hi@aaronyoung.io>
  * @param {Object} _req - an express request object
  * @param {Object} res - an express response object
  * @return {void}
  */
 const getProduction = async (_req, res) => {
-  const schedule = app.get(PROD_SCHEDULE);
+  const schedule = app.get(SCHEDULE);
   res.status(200).json(schedule);
 };
 
@@ -132,7 +118,5 @@ app.get('/api/schedule/production', getProduction);
 module.exports = {
   transformSchedule,
   getScheduleFromBase,
-  getDevSchedule,
-  setDevSchedule,
-  setProdSchedule,
+  setSchedule,
 };
