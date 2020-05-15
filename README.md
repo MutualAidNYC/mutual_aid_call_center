@@ -16,8 +16,11 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
    4. WORKSPACE_SID: Twilio taskrouter workspace sid
    5. AIRTABLE_DEV_PHONE_BASE: base id for development Airtable base
    6. AIRTABLE_PROD_PHONE_BASE: base id for production Airtable base
-   7. AIRTABLE_DELAY: delay in milliseconds between checking the airtable bases
-   8. AIRTABLE_API_KEY: airtable api key
+   7. AIRTABLE_VM_PHONE_BASE: base id for the VM base
+   8. AIRTABLE_DELAY: delay in milliseconds between checking the airtable bases
+   9. AIRTABLE_API_KEY: airtable api key
+   10. TWILIO_TASKROUTER_VM_SID: SID of the woker that represents VM
+   11. HOST_NAME: Your hostname for example www.google.com
 4. Run `$ npm install`
 
 # NPM Scripts
@@ -25,7 +28,10 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
 1. `$ npm test` - Runs the mocha test suite
 2. `$ npn run debug` - Used by VSCode
 3. `$ npm start` - Starts a local server using nodemon which will re-run the project on every file save
-4. `$ npm run coverage` - Starts an Istanbul test coverage report. In addition to the console output, there is a `./coverage/index.html` that is generated for a more detailed report in the browser
+4. `$ npm run coverage` - Starts an Istanbul test coverage report.
+   1. Will generate a simplifed report to console
+   2. Will generate and open in browser a more detailed report
+   3. Generated files are git ignored
 
 # Debugging server locally using VSCode
 
