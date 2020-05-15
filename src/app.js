@@ -15,6 +15,7 @@ require('./api/routes/sms-incoming');
 require('./api/routes/call-assignment');
 require('./api/routes/agent-connected');
 require('./api/routes/worker-bridge-disconnect');
+require('./api/routes/vm-recording-ended');
 
 const { setDevSchedule, setProdSchedule } = require('./api/routes/schedule');
 
@@ -28,7 +29,7 @@ const startUp = async (languagesToPhones) => {
   logger.info('Development phone schedule loaded');
   await setProdSchedule();
   logger.info('Production phone schedule loaded');
-  await initLoaders(app);
+  await initLoaders();
   // await setTwilioInfoToApp();
   // logger.info('Twillio loaded');
   app.listen(port, onListen);

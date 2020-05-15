@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const sinon = require('sinon');
 const taskRouter = require('../../src/service/twilioTaskRouter');
 const config = require('../../src/config');
+const airtableController = require('../../src/service/airtableController');
 
 describe('TwilioTaskRouter class', () => {
   const activityObj = {
@@ -120,20 +121,24 @@ describe('TwilioTaskRouter class', () => {
 
   describe('handleCallAssignment', () => {
     let createStub;
+    let sendToVmStub;
     beforeEach(() => {
       taskRouter.activities = activityObj;
       taskRouter.workers = workersObj;
       createStub = sinon.stub(taskRouter.client.calls, 'create');
+      sendToVmStub = sinon.stub(taskRouter, 'sendToVm');
     });
     afterEach(() => {
       createStub.restore();
+      sendToVmStub.restore();
     });
-    it('Makes an outbound call to the assigned agent', async () => {
+    it('Makes an outbound call to the assigned agent if NOT vm', async () => {
       const event = {
         TaskAttributes:
           '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
         WorkerAttributes:
           '{"languages":["English"],"contact_uri":"+16667778888"}',
+        WorkerSid: 'someSID',
       };
       createStub.resolves(null);
       await taskRouter.handleCallAssignment(event);
@@ -143,6 +148,19 @@ describe('TwilioTaskRouter class', () => {
         machineDetection: 'Enable',
         url: `https://${config.hostName}/api/agent-connected`,
       });
+      expect(sendToVmStub.notCalled).to.be.equal(true);
+    });
+    it('Invoke sendToVM if assigned to VM worker', async () => {
+      const event = {
+        TaskAttributes:
+          '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
+        WorkerAttributes:
+          '{"languages":["English"],"contact_uri":"+16667778888"}',
+        WorkerSid: config.twilio.vmWorkerSid,
+      };
+      await taskRouter.handleCallAssignment(event);
+      expect(createStub.notCalled).to.equal(true);
+      expect(sendToVmStub.firstCall.firstArg).to.be.equal(event);
     });
   });
 
@@ -340,6 +358,143 @@ describe('TwilioTaskRouter class', () => {
     });
   });
 
+  describe('sendToVM', () => {
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*"/><Say>I did not receive a recording</Say></Response>`;
+    const callSid = 'CAxxxxxxxxxxxx';
+    // const statusCallBack = `https://${config.hostName}/api/vm-recording-ended`;
+    const updateObj = {
+      twiml,
+      // statusCallBack,
+      // statusCallbackMethod: 'POST',
+    };
+    const event = {
+      TaskAttributes:
+        '{"from_country":"US","called":"+12345678901","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAxxxxxxxxxxxx","account_sid":"ACxxxxxxxxxxxxxxxx","from_zip":"10601","from":"+12223334444","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+12223334455","caller_city":"WHITE PLAINS","to":"+12223334455"}',
+      ReservationSid: 'WRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      WorkspaceSid: 'WSxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      TaskQueueSid: 'WQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      WorkerSid: config.twilio.vmWorkerSid,
+
+      TaskSid: 'WTxxxxxxxxxxxx',
+      WorkerAttributes:
+        '{"languages":["English"],"contact_uri":"+12223334567"}',
+    };
+    let updateReservationStub;
+    let updateCallStub;
+    before(() => {
+      updateReservationStub = sinon.stub(
+        taskRouter,
+        '_updateReservationStatus',
+      );
+      updateCallStub = sinon.stub(taskRouter, '_updateCall');
+    });
+    after(() => {
+      updateReservationStub.restore();
+      updateCallStub.restore();
+    });
+    it('Plays a message then triggers a recording', async () => {
+      expect(await taskRouter.sendToVm(event)).to.equal(undefined);
+      expect(updateReservationStub.firstCall.firstArg).to.equal(
+        event.WorkerSid,
+      );
+      expect(updateReservationStub.firstCall.args[1]).to.equal(
+        event.ReservationSid,
+      );
+      expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
+      expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
+      expect(updateCallStub.firstCall.lastArg).to.eql(updateObj);
+
+      // redirect call (update call?)
+      // say message
+      // record message
+      // have a message if no recording
+    });
+  });
+
+  describe('handleVmRecordingEnded', () => {
+    let deleteRecordingStub;
+    let fetchTaskForCallSidStub;
+    let updateTaskStub;
+    let addVmToDbstub;
+    const RecordingSid = 'REbxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    const CallSid = 'CAxxxxxxxxxxxxxxxxxxxxxxxxx';
+    const recordingID = 'recXXXXXXXX';
+    const task = {
+      sid: 'WTxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      attributes:
+        '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAxxxxxxxxxxxxxxxxxx","account_sid":"ACxxxxxxxxxxxxxxx","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+1222333444"}',
+    };
+    const RecordingUrl =
+      'https://api.twilio.com/2010-04-01/Accounts/ACxxxxxxxxxx/Recordings/RExxxxxxxxxxxxxxxxxxxx';
+    beforeEach(() => {
+      deleteRecordingStub = sinon.stub(taskRouter, 'deleteRecording');
+      fetchTaskForCallSidStub = sinon.stub(taskRouter, '_fetchTaskForCallSid');
+      updateTaskStub = sinon.stub(taskRouter, '_updateTask');
+      addVmToDbstub = sinon.stub(airtableController, 'addVmToDb');
+
+      addVmToDbstub.resolves(recordingID);
+      updateTaskStub.resolves();
+      fetchTaskForCallSidStub.withArgs(CallSid).resolves(task);
+    });
+    afterEach(() => {
+      deleteRecordingStub.restore();
+      fetchTaskForCallSidStub.restore();
+      updateTaskStub.restore();
+      addVmToDbstub.restore();
+    });
+    it('Saves the VM', async () => {
+      const event = {
+        CallSid,
+        CallStatus: 'in-progress',
+        RecordingSid,
+        RecordingUrl,
+      };
+      await taskRouter.handleVmRecordingEnded(event);
+      expect(addVmToDbstub.firstCall.args[0]).to.equal(RecordingSid);
+      expect(addVmToDbstub.firstCall.args[1]).to.equal(RecordingUrl);
+      expect(addVmToDbstub.firstCall.args[2]).to.equal('English');
+      expect(addVmToDbstub.firstCall.args[3]).to.equal('5556667777');
+    });
+    it('Marks Task as complete', async () => {
+      const event = {
+        CallSid,
+        CallStatus: 'in-progress',
+        RecordingSid,
+        RecordingUrl,
+      };
+      await taskRouter.handleVmRecordingEnded(event);
+      expect(updateTaskStub.firstCall.args[0]).to.equal(task.sid);
+      expect(updateTaskStub.firstCall.args[1]).to.equal('completed');
+      expect(updateTaskStub.firstCall.args[2]).to.equal('VM recorded');
+    });
+    describe('Call in-progress', () => {
+      it('Ends the call', async () => {
+        const event = {
+          CallSid,
+          CallStatus: 'in-progress',
+          RecordingSid,
+          RecordingUrl,
+        };
+        expect(await taskRouter.handleVmRecordingEnded(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We have received your voicemail, we\'ll get back to you soon. Goodbye</Say><Hangup/></Response>',
+        );
+      });
+    });
+    describe('Call completed', () => {
+      it('Sends an empty response', async () => {
+        const event = {
+          CallSid,
+          CallStatus: 'completed',
+          RecordingSid: 'REbxxxxxxxxxxxxxxxxxxxxxxxxxx',
+          RecordingUrl,
+        };
+        expect(await taskRouter.handleVmRecordingEnded(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response/>',
+        );
+      });
+    });
+  });
+
   describe('_getWorkerObj', () => {
     let stub;
     const originalWorkspace = taskRouter.workspace;
@@ -490,6 +645,75 @@ describe('TwilioTaskRouter class', () => {
         assignmentStatus: status,
         reason,
       });
+    });
+  });
+
+  describe('_fetchTaskReservations', () => {
+    const origWorkspace = taskRouter.workspace;
+    const tasks = sinon.stub();
+    const list = sinon.stub();
+    const reservations = [];
+    const taskSid = 'WTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+    const status = 'pending';
+    before(() => {
+      taskRouter.workspace = { tasks };
+      tasks.returns({
+        reservations: {
+          list,
+        },
+      });
+      list.resolves(reservations);
+    });
+
+    after(() => {
+      taskRouter.workspace = origWorkspace;
+    });
+    it('Finds and returns reservations', async () => {
+      expect(await taskRouter._fetchTaskReservations(taskSid, status)).to.equal(
+        reservations,
+      );
+      expect(tasks.firstCall.firstArg).to.equal(taskSid);
+      expect(list.firstCall.firstArg).to.eql({ ReservationStatus: status });
+    });
+  });
+
+  describe('_fetchTaskForCallSid', () => {
+    const task = {
+      sid: 'WTxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      attributes:
+        '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAxxxxxxxxx","account_sid":"ACxxxxxxxx","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+1222333444"}',
+    };
+    const callSid = 'CAxxxxxxxxxxx';
+    const taskParams = { evaluateTaskAttributes: `call_sid == "${callSid}"` };
+    let listStub;
+    before(() => {
+      listStub = sinon.stub(taskRouter.workspace.tasks, 'list');
+      listStub.resolves([task]);
+    });
+    after(() => {
+      listStub.restore();
+    });
+    it('returns the task that matches the call sid', async () => {
+      expect(await taskRouter._fetchTaskForCallSid(callSid)).to.equal(task);
+      expect(listStub.firstCall.firstArg).to.eql(taskParams);
+    });
+  });
+  describe('deleteRecording', () => {
+    const recordingsStub = sinon.stub();
+    const removeStub = sinon.stub();
+    const recordingSid = 'REXXXXXXXXXXXXXXXXXXX';
+    const originalClient = taskRouter.client;
+    before(() => {
+      recordingsStub.returns({ remove: removeStub });
+      taskRouter.client = { recordings: recordingsStub };
+    });
+    after(() => {
+      taskRouter.client = originalClient;
+    });
+    it('Tells twilio to delete the specified recording', () => {
+      taskRouter.deleteRecording(recordingSid);
+      expect(recordingsStub.firstCall.firstArg).to.equal(recordingSid);
+      expect(removeStub.called).to.equal(true);
     });
   });
 });

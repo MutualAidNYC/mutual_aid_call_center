@@ -7,10 +7,18 @@ if (process.env.NODE_ENV !== 'production') {
 // Everything has a default value for tests in a CI/CD enviroment
 module.exports = {
   twilio: {
-    accountSid: process.env.ACCOUNT_SID || 'ACbogusSid',
-    authToken: process.env.AUTH_TOKEN || 'bogusToken',
-    workspaceSid: process.env.WORKSPACE_SID || 'bogusWorkspace',
+    accountSid: process.env.ACCOUNT_SID,
+    authToken: process.env.AUTH_TOKEN,
+    workspaceSid: process.env.WORKSPACE_SID,
+    vmWorkerSid: process.env.TWILIO_TASKROUTER_VM_SID,
   },
-  hostName: process.env.HOST_NAME || 'someHostName',
+  airtable: {
+    devPhoneBase: process.env.AIRTABLE_DEV_PHONE_BASE,
+    prodPhoneBase: process.env.AIRTABLE_PROD_PHONE_BASE,
+    delay: process.env.AIRTABLE_DELAY,
+    apiKey: process.env.AIRTABLE_API_KEY,
+    vmBase: process.env.AIRTABLE_VM_PHONE_BASE,
+  },
+  hostName: process.env.HOST_NAME,
   isProduction: process.env.NODE_ENV === 'production',
 };
