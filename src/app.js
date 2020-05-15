@@ -9,7 +9,6 @@ if (process.env.NODE_ENV !== 'production') {
 logger.info('warming up');
 const initLoaders = require('./loaders');
 const app = require('./server');
-const { getInitialShift, saveShiftNumbers } = require('./jobs/getShiftNumbers');
 require('./api/routes/language');
 require('./api/routes/sms-incoming');
 require('./api/routes/call-assignment');
@@ -17,18 +16,14 @@ require('./api/routes/agent-connected');
 require('./api/routes/worker-bridge-disconnect');
 require('./api/routes/vm-recording-ended');
 
-const { setDevSchedule, setProdSchedule } = require('./api/routes/schedule');
+const { setSchedule } = require('./api/routes/schedule');
 
 const port = process.env.PORT || 80;
 
 const onListen = () => logger.info(`Server is running on port ${port}`);
-const startUp = async (languagesToPhones) => {
-  saveShiftNumbers(languagesToPhones);
-  logger.info('Got shift phone numbers');
-  await setDevSchedule();
-  logger.info('Development phone schedule loaded');
-  await setProdSchedule();
-  logger.info('Production phone schedule loaded');
+const startUp = async () => {
+  await setSchedule();
+  logger.info('Phone schedule loaded');
   await initLoaders();
   // await setTwilioInfoToApp();
   // logger.info('Twillio loaded');
@@ -36,8 +31,7 @@ const startUp = async (languagesToPhones) => {
 
   // event loop, we want these things to happen at a slow poll
   setInterval(() => {
-    setDevSchedule();
-    setProdSchedule();
+    setSchedule();
   }, process.env.AIRTABLE_DELAY);
 };
 
@@ -46,5 +40,5 @@ app.get('/', (req, res) => {
 });
 
 // start the engine
-getInitialShift(startUp);
+startUp();
 module.exports = app;

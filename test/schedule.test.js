@@ -5,8 +5,7 @@ const axios = require('axios');
 const {
   transformSchedule,
   getScheduleFromBase,
-  setDevSchedule,
-  setProdSchedule,
+  setSchedule,
 } = require('../src/api/routes/schedule');
 require('dotenv').config(); // load the local .env file
 
@@ -30,10 +29,10 @@ describe('api/schedule', () => {
     });
     describe('getSchedule', () => {
       let mock;
-      let getDevBase;
+      let getBase;
       beforeEach(() => {
         mock = sinon.mock(axios);
-        getDevBase = getScheduleFromBase(process.env.AIRTABLE_DEV_PHONE_BASE);
+        getBase = getScheduleFromBase(process.env.PHONE_BASE);
       });
       afterEach(() => {
         mock.restore();
@@ -42,7 +41,7 @@ describe('api/schedule', () => {
         const data = sampleInput;
         const resolved = new Promise((r) => r({ data }));
         mock.expects('get').returns(resolved);
-        const result = await getDevBase();
+        const result = await getBase();
         expect(result).to.eql(sampleOutput);
       });
     });
@@ -55,37 +54,20 @@ describe('api/schedule', () => {
       afterEach(() => {
         mock.restore();
       });
-      describe('setDevSchedule', () => {
-        it('Invokes app.set("devSchedule")', async () => {
-          const getDevSchedule = sinon.fake.returns(schedule);
-          mock.expects('set').withExactArgs('devSchedule', schedule);
-          await setDevSchedule(getDevSchedule);
+      describe('setSchedule', () => {
+        it('Invokes app.set("schedule")', async () => {
+          const getSchedule = sinon.fake.returns(schedule);
+          mock.expects('set').withExactArgs('schedule', schedule);
+          await setSchedule(getSchedule);
           mock.verify();
         });
       });
-      describe('setProdSchedule', () => {
-        it('Invokes app.set("devSchedule")', async () => {
-          const getProdSchedule = sinon.fake.returns(schedule);
-          mock.expects('set').withExactArgs('prodSchedule', schedule);
-          await setProdSchedule(getProdSchedule);
-          mock.verify();
-        });
-      });
-    });
-  });
-  describe('GET /development', () => {
-    it('should get a devSchedule from app.get', async () => {
-      app.set('devSchedule', sampleOutput);
-      const res = await request(app).get('/api/schedule/development');
-      app.set('devSchedule', undefined); // reset the value
-      expect(res.status).to.equal(200);
-      expect(res.body).to.eql(sampleOutput);
     });
   });
 
   describe('GET /production', () => {
     it('should get a prodSchedule from app.get', async () => {
-      app.set('prodSchedule', sampleOutput);
+      app.set('schedule', sampleOutput);
       const res = await request(app).get('/api/schedule/production');
       expect(res.status).to.equal(200);
       expect(res.body).to.eql(sampleOutput);

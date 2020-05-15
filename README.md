@@ -14,13 +14,12 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
    2. ACCOUNT_SID: Twilio account sid
    3. AUTH_TOKEN: Twilio auth token
    4. WORKSPACE_SID: Twilio taskrouter workspace sid
-   5. AIRTABLE_DEV_PHONE_BASE: base id for development Airtable base
-   6. AIRTABLE_PROD_PHONE_BASE: base id for production Airtable base
-   7. AIRTABLE_VM_PHONE_BASE: base id for the VM base
-   8. AIRTABLE_DELAY: delay in milliseconds between checking the airtable bases
-   9. AIRTABLE_API_KEY: airtable api key
-   10. TWILIO_TASKROUTER_VM_SID: SID of the woker that represents VM
-   11. HOST_NAME: Your hostname for example www.google.com
+   5. PHONE_BASE: base id for a phone Airtable base
+   6. AIRTABLE_VM_PHONE_BASE: base id for the VM base
+   7. AIRTABLE_DELAY: delay in milliseconds between checking the airtable bases
+   8. AIRTABLE_API_KEY: airtable api key
+   9. TWILIO_TASKROUTER_VM_SID: SID of the woker that represents VM
+   10. HOST_NAME: Your hostname for example www.google.com
 4. Run `$ npm install`
 
 # NPM Scripts

@@ -24,8 +24,7 @@ jobs:
         env:
           CI: true
           AIRTABLE_DELAY: 900000
-          AIRTABLE_DEV_PHONE_BASE: appxxxxxxxxxxxx
-          AIRTABLE_PROD_PHONE_BASE: appxxxxxxxxxxx
+          PHONE_BASE: appxxxxxxxxxxx
           PORT: 8080
           ACCOUNT_SID: ACxxxxxxxxxxxxxxxxx
           AUTH_TOKEN: xxxxxxxxxxxxxxxxxxxx
