@@ -29,10 +29,10 @@ describe('api/schedule', () => {
     });
     describe('getSchedule', () => {
       let mock;
-      let getDevBase;
+      let getBase;
       beforeEach(() => {
         mock = sinon.mock(axios);
-        getDevBase = getScheduleFromBase(process.env.AIRTABLE_DEV_PHONE_BASE);
+        getBase = getScheduleFromBase(process.env.PHONE_BASE);
       });
       afterEach(() => {
         mock.restore();
@@ -41,7 +41,7 @@ describe('api/schedule', () => {
         const data = sampleInput;
         const resolved = new Promise((r) => r({ data }));
         mock.expects('get').returns(resolved);
-        const result = await getDevBase();
+        const result = await getBase();
         expect(result).to.eql(sampleOutput);
       });
     });

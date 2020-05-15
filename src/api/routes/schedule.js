@@ -68,16 +68,6 @@ const getScheduleFromBase = (base) => {
   };
 };
 
-const getTheSchedule = getScheduleFromBase(process.env.PHONE_BASE);
-
-/**
- * sets within express the development schedule
- * @author Aaron Young <hi@aaronyoung.io>
- * @param {Function} getSchedule - defaults to a function that when
- * invoked returns a schedule object
- * @return {void}
- */
-
 /**
  * sets within express the schedule
  * @author Aaron Young <hi@aaronyoung.io>
@@ -85,20 +75,10 @@ const getTheSchedule = getScheduleFromBase(process.env.PHONE_BASE);
  * invoked returns a schedule object
  * @return {void}
  */
-const setSchedule = async (getSchedule = getTheSchedule) => {
-  const schedule = await getSchedule();
+const setSchedule = async (getSchedule = getScheduleFromBase) => {
+  const schedule = await getSchedule(process.env.PHONE_BASE);
   app.set(SCHEDULE, schedule);
 };
-
-/**
- * An express route function that matches the required express signature
- * This will respond with a development schedule
- * @author Aaron Young <hi@aaronyoung.io>
- * @param {Object} _req - an express request object
- * @param {Object} res - an express response object
- * @return {void}
- */
-
 /**
  * An express route function that matches the required express signature
  * This will respond with a schedule

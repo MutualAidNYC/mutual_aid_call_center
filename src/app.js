@@ -9,7 +9,6 @@ if (process.env.NODE_ENV !== 'production') {
 logger.info('warming up');
 const initLoaders = require('./loaders');
 const app = require('./server');
-const { getInitialShift, saveShiftNumbers } = require('./jobs/getShiftNumbers');
 require('./api/routes/language');
 require('./api/routes/sms-incoming');
 require('./api/routes/call-assignment');
@@ -22,9 +21,7 @@ const { setSchedule } = require('./api/routes/schedule');
 const port = process.env.PORT || 80;
 
 const onListen = () => logger.info(`Server is running on port ${port}`);
-const startUp = async (languagesToPhones) => {
-  saveShiftNumbers(languagesToPhones);
-  logger.info('Got shift phone numbers');
+const startUp = async () => {
   await setSchedule();
   logger.info('Phone schedule loaded');
   await initLoaders();
@@ -43,5 +40,5 @@ app.get('/', (req, res) => {
 });
 
 // start the engine
-getInitialShift(startUp);
+startUp();
 module.exports = app;
