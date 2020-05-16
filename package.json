@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "test": "mocha --recursive",
-    "debug": "node --nolazy --inspect-brk=9229 src/app.js",
+    "debug": "node --nolazy --inspect-brk=9229 src/app.js | pino-pretty -t -i hostname,pid",
     "start": "nodemon src/app.js | pino-pretty -t -i hostname,pid",
     "coverage": "nyc --reporter=text --reporter=html mocha --recursive --exit --timeout 15000 && open coverage/index.html"
   },
