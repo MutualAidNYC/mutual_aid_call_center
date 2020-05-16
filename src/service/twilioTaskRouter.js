@@ -28,6 +28,15 @@ const findMostRecentlyUpdatedReservation = (reservations) => {
   return reservations[0];
 };
 
+const isLanguagesDifferent = (language1, language2) => {
+  return language1.sort().join() !== language2.sort().join();
+};
+
+const formatPhoneNumber = (number) => {
+  const regex = /(\(|\)|\s|-|‐)/gi;
+  return `+1${number.replace(regex, '')}`;
+};
+
 class TwilioTaskRouter {
   constructor() {
     this.twilio = twilio;
@@ -282,21 +291,22 @@ class TwilioTaskRouter {
     // get workers
     const workers = {};
     // for each airtableworker
-    const regex = /(\(|\)|\s|-|‐)/gi;
     airtableWokers.forEach(async (worker) => {
-      const phone = `+1${worker.fields.Phone.replace(regex, '')}`;
-      workers[phone] = {
-        phone,
-        languages: worker.fields.Languages || [],
-      };
-
       if (
         !worker.fields.Phone ||
         !worker.fields.Name ||
         !worker.fields.Languages
       ) {
+        // If any values are missing, skip
         return;
       }
+      const phone = formatPhoneNumber(worker.fields.Phone);
+
+      workers[phone] = {
+        phone,
+        languages: worker.fields.Languages || [],
+      };
+
       const updateObj = {
         friendlyName: worker.fields.Name,
         attributes: JSON.stringify({
@@ -304,12 +314,15 @@ class TwilioTaskRouter {
           contact_uri: phone,
         }),
       };
+
       if (!twilioWorkers[phone]) {
         //   create if need to
         await this.workspace.workers.create(updateObj);
       } else if (
-        twilioWorkers[phone].languages.sort().join() !==
-          worker.fields.Languages.sort().join() ||
+        isLanguagesDifferent(
+          twilioWorkers[phone].languages,
+          worker.fields.Languages,
+        ) ||
         twilioWorkers[phone].friendlyName !== worker.fields.Name
       ) {
         //   update if need to
@@ -326,6 +339,8 @@ class TwilioTaskRouter {
         !workers[contactUri] &&
         twilioWorkers[contactUri].sid !== config.twilio.vmWorkerSid
       ) {
+        // if we didn't see it in airtable list, and it isn't the VM worker
+
         // eslint-disable-next-line no-await-in-loop
         await this._deleteWorker(twilioWorkers[contactUri].sid);
       }
