@@ -11,8 +11,16 @@ describe('TwilioTaskRouter class', () => {
     Unavailable: 'WAbaloney3',
   };
   const workersObj = {
-    '+12223334444': { friendlyName: 'Jane Doe', sid: 'WKbaloney1' },
-    '+15556667777': { friendlyName: 'Bob Marley', sid: 'WKbaloney2' },
+    '+12223334444': {
+      friendlyName: 'Jane Doe',
+      sid: 'WKbaloney1',
+      languages: ['Spanish', 'English'],
+    },
+    '+15556667777': {
+      friendlyName: 'Bob Marley',
+      sid: 'WKbaloney2',
+      languages: ['English'],
+    },
   };
 
   beforeEach(() => {

@@ -17,13 +17,14 @@ const fetchActivities = async (obj) => {
 
 const fetchWorkers = async (obj) => {
   const result = {};
-  const workers = await obj.workspace.workers.list();
+  const workers = await obj.workspace.workers.list({ limit: 1000 });
   workers.forEach((worker) => {
     const workerAttributes = JSON.parse(worker.attributes);
     const phoneNumber = workerAttributes.contact_uri;
     result[phoneNumber] = {
       sid: worker.sid,
       friendlyName: worker.friendlyName,
+      languages: workerAttributes.languages,
     };
   });
   return result;
@@ -51,6 +52,10 @@ class TwilioTaskRouter {
     );
     this.activities = {};
     this.workers = {};
+  }
+
+  _deleteWorker(workerSid) {
+    this.workspace.workers(workerSid).remove();
   }
 
   async _getPendingReservation(workerSid, status) {
@@ -100,6 +105,12 @@ class TwilioTaskRouter {
     return this._getWorkerObj(workerSid)
       .reservations(reservationSid)
       .update({ reservationStatus: newStatus });
+  }
+
+  _updateWorkerDetails(workerSid, attributes, friendlyName) {
+    return this.workspace
+      .workers(workerSid)
+      .update({ attributes: attributes, friendlyName });
   }
 
   deleteRecording(recordingSid) {
@@ -259,6 +270,67 @@ class TwilioTaskRouter {
     this._updateCall(JSON.parse(event.TaskAttributes).call_sid, {
       twiml: response.toString(),
     });
+  }
+  async syncWorkers() {
+    // get airtableworkers
+    const airtableWokers = await airtableController.fetchAllRecordsFromTable(
+      'Volunteers',
+      config.airtable.phoneBase,
+    );
+    const twilioWorkers = await fetchWorkers(this);
+    //get workers
+    const workers = {};
+    // for each airtableworker
+    const regex = /(\(|\)|\s|-|‐)/gi;
+    airtableWokers.forEach(async (worker) => {
+      // if (worker.fields.Name === 'Alexandra Pierre-Phillips') debugger;
+      const phone = `+1${worker.fields.Phone.replace(regex, '')}`;
+      workers[phone] = {
+        phone,
+        languages: worker.fields.Languages || [],
+      };
+
+      if (
+        !worker.fields.Phone ||
+        !worker.fields.Name ||
+        !worker.fields.Languages
+      ) {
+        return;
+      }
+      const updateObj = {
+        friendlyName: worker.fields.Name,
+        attributes: JSON.stringify({
+          languages: worker.fields.Languages || [],
+          contact_uri: phone,
+        }),
+      };
+      if (!twilioWorkers[phone]) {
+        //   create if need to
+        await this.workspace.workers.create(updateObj);
+      } else if (
+        twilioWorkers[phone].languages.sort().join() !==
+          worker.fields.Languages.sort().join() ||
+        twilioWorkers[phone].friendlyName !== worker.fields.Name
+      ) {
+        //   update if need to
+        await this._updateWorkerDetails(
+          twilioWorkers[phone].sid,
+          updateObj.attributes,
+          updateObj.friendlyName,
+        );
+      }
+    });
+    //foreach twilio worker
+    for (const contactUri in twilioWorkers) {
+      if (
+        !workers[contactUri] &&
+        twilioWorkers[contactUri].sid !== config.twilio.vmWorkerSid
+      ) {
+        // eslint-disable-next-line no-await-in-loop
+        await this._deleteWorker(twilioWorkers[contactUri].sid);
+      }
+    }
+    //  delete if need to unless its vm
   }
 }
 
