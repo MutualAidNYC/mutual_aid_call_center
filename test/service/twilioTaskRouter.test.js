@@ -742,4 +742,27 @@ describe('TwilioTaskRouter class', () => {
       expect(removeStub.called).to.equal(true);
     });
   });
+  describe('_UpdateWorkerDetails', () => {
+    const workersStub = sinon.stub();
+    const upodateStub = sinon.stub();
+    const workerSid = 'WRxxxxxxxxxxxx';
+    const attributes = 'some json';
+    const friendlyName = 'john doe';
+    const originalWorkSpace = taskRouter.workspace;
+    before(() => {
+      workersStub.returns({ update: upodateStub });
+      taskRouter.workspace = { workers: workersStub };
+    });
+    after(() => {
+      taskRouter.workspace = originalWorkSpace;
+    });
+    it('Updates specified worker', () => {
+      taskRouter._updateWorkerDetails(workerSid, attributes, friendlyName);
+      expect(workersStub.firstCall.firstArg).to.equal(workerSid);
+      expect(upodateStub.firstCall.firstArg).to.eql({
+        attributes,
+        friendlyName,
+      });
+    });
+  });
 });
