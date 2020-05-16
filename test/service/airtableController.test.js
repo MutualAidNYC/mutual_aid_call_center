@@ -294,8 +294,7 @@ describe('airtableController', () => {
     let clock;
     const axiosConfig1 = {
       method: 'get',
-      url:
-        'https://api.airtable.com/v0/appHH8ovgf8EcybFz/General%20Hours?view=Grid%20view',
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=Grid%20view`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
@@ -305,8 +304,7 @@ describe('airtableController', () => {
     };
     const axiosConfig2 = {
       method: 'get',
-      url:
-        'https://api.airtable.com/v0/appHH8ovgf8EcybFz/General%20Hours?view=Grid%20view',
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=Grid%20view`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
