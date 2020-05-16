@@ -1,6 +1,6 @@
 const Airtable = require('airtable');
 const util = require('util');
-// const taskRouter = require('./twilioTaskRouter');
+const axios = require('axios');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
 
@@ -12,6 +12,7 @@ class AirtableController {
   constructor() {
     this.airtable = new Airtable(config.airtable.apiKey);
     this.stopPoll = false;
+    this.axios = axios;
   }
 
   addRowToTable(baseId, tableName, fieldObj) {
@@ -85,6 +86,51 @@ class AirtableController {
       });
     };
     return pageProcessor.bind(this);
+  }
+
+  async fetchAllRecordsFromTable(table, base) {
+    const urlifiedTableName = table.replace(' ', '%20');
+    let count = 0;
+    const maxTries = 2000;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const allRecords = [];
+      let offset;
+      try {
+        let fetchNextPage = true;
+        while (fetchNextPage) {
+          const axiosConfig = {
+            headers: {
+              Authorization: `Bearer ${config.airtable.apiKey}`,
+            },
+            method: 'get',
+            url: `https://api.airtable.com/v0/${base}/${urlifiedTableName}?view=Grid%20view`,
+            data: {
+              view: 'Grid%20view',
+            },
+          };
+          if (offset) {
+            axiosConfig.data.offset = offset;
+          }
+          const response = await this.axios.request(axiosConfig); // eslint-disable-line no-await-in-loop
+          response.data.records.forEach((record) => {
+            allRecords.push(record);
+          });
+          if (response.data.offset) {
+            offset = response.data.offset;
+          } else {
+            fetchNextPage = false;
+          }
+          await sleep(250); // eslint-disable-line no-await-in-loop
+        }
+        return allRecords;
+      } catch (error) {
+        logger.error('Error fetching from airtable: %o', error);
+        await sleep(30000); // eslint-disable-line no-await-in-loop
+        count += 1;
+        if (count === maxTries) throw new Error('Maximum calls');
+      }
+    }
   }
 }
 

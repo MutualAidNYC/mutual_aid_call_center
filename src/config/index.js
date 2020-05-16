@@ -13,7 +13,7 @@ module.exports = {
     vmWorkerSid: process.env.TWILIO_TASKROUTER_VM_SID,
   },
   airtable: {
-    phoneBase: process.env.AIRTABLE_PHONE_BASE,
+    phoneBase: process.env.PHONE_BASE,
     delay: process.env.AIRTABLE_DELAY,
     apiKey: process.env.AIRTABLE_API_KEY,
     vmBase: process.env.AIRTABLE_VM_PHONE_BASE,
