@@ -724,4 +724,22 @@ describe('TwilioTaskRouter class', () => {
       expect(removeStub.called).to.equal(true);
     });
   });
+  describe('_deleteWorker', () => {
+    const workersStub = sinon.stub();
+    const removeStub = sinon.stub();
+    const workerSid = 'WRxxxxxxxxxxxx';
+    const originalWorkSpace = taskRouter.workspace;
+    before(() => {
+      workersStub.returns({ remove: removeStub });
+      taskRouter.workspace = { workers: workersStub };
+    });
+    after(() => {
+      taskRouter.workspace = originalWorkSpace;
+    });
+    it('Tells twilio to delete the specified worker', () => {
+      taskRouter._deleteWorker(workerSid);
+      expect(workersStub.firstCall.firstArg).to.equal(workerSid);
+      expect(removeStub.called).to.equal(true);
+    });
+  });
 });

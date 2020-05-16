@@ -15,21 +15,6 @@ const fetchActivities = async (obj) => {
   return result;
 };
 
-const fetchWorkers = async (obj) => {
-  const result = {};
-  const workers = await obj.workspace.workers.list({ limit: 1000 });
-  workers.forEach((worker) => {
-    const workerAttributes = JSON.parse(worker.attributes);
-    const phoneNumber = workerAttributes.contact_uri;
-    result[phoneNumber] = {
-      sid: worker.sid,
-      friendlyName: worker.friendlyName,
-      languages: workerAttributes.languages,
-    };
-  });
-  return result;
-};
-
 const saveVmToDb = (url, language, phone, callSid) => {
   return airtableController.addVmToDb(callSid, url, language, phone.slice(2));
 };
@@ -82,6 +67,20 @@ class TwilioTaskRouter {
     return task;
   }
 
+  async _fetchWorkers() {
+    const result = {};
+    const workers = await this.workspace.workers.list({ limit: 1000 });
+    workers.forEach((worker) => {
+      const workerAttributes = JSON.parse(worker.attributes);
+      const phoneNumber = workerAttributes.contact_uri;
+      result[phoneNumber] = {
+        sid: worker.sid,
+        friendlyName: worker.friendlyName,
+        languages: workerAttributes.languages,
+      };
+    });
+    return result;
+  }
   async _updateTask(taskSid, assignmentStatus, reason) {
     const task = await this._fetchTask(taskSid);
     return task.update({ assignmentStatus, reason });
@@ -119,7 +118,7 @@ class TwilioTaskRouter {
 
   async init() {
     this.activities = await fetchActivities(this);
-    this.workers = await fetchWorkers(this);
+    this.workers = await this._fetchWorkers();
   }
 
   async handleAgentConnected(event) {
@@ -277,13 +276,12 @@ class TwilioTaskRouter {
       'Volunteers',
       config.airtable.phoneBase,
     );
-    const twilioWorkers = await fetchWorkers(this);
+    const twilioWorkers = await this._fetchWorkers();
     //get workers
     const workers = {};
     // for each airtableworker
     const regex = /(\(|\)|\s|-|‐)/gi;
     airtableWokers.forEach(async (worker) => {
-      // if (worker.fields.Name === 'Alexandra Pierre-Phillips') debugger;
       const phone = `+1${worker.fields.Phone.replace(regex, '')}`;
       workers[phone] = {
         phone,
