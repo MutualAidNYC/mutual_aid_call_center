@@ -81,6 +81,7 @@ class TwilioTaskRouter {
     });
     return result;
   }
+
   async _updateTask(taskSid, assignmentStatus, reason) {
     const task = await this._fetchTask(taskSid);
     return task.update({ assignmentStatus, reason });
@@ -109,7 +110,7 @@ class TwilioTaskRouter {
   _updateWorkerDetails(workerSid, attributes, friendlyName) {
     return this.workspace
       .workers(workerSid)
-      .update({ attributes: attributes, friendlyName });
+      .update({ attributes, friendlyName });
   }
 
   deleteRecording(recordingSid) {
@@ -270,6 +271,7 @@ class TwilioTaskRouter {
       twiml: response.toString(),
     });
   }
+
   async syncWorkers() {
     // get airtableworkers
     const airtableWokers = await airtableController.fetchAllRecordsFromTable(
@@ -277,7 +279,7 @@ class TwilioTaskRouter {
       config.airtable.phoneBase,
     );
     const twilioWorkers = await this._fetchWorkers();
-    //get workers
+    // get workers
     const workers = {};
     // for each airtableworker
     const regex = /(\(|\)|\s|-|‐)/gi;
@@ -318,8 +320,8 @@ class TwilioTaskRouter {
         );
       }
     });
-    //foreach twilio worker
-    for (const contactUri in twilioWorkers) {
+    // foreach twilio worker
+    Object.keys(twilioWorkers).forEach(async (contactUri) => {
       if (
         !workers[contactUri] &&
         twilioWorkers[contactUri].sid !== config.twilio.vmWorkerSid
@@ -327,7 +329,8 @@ class TwilioTaskRouter {
         // eslint-disable-next-line no-await-in-loop
         await this._deleteWorker(twilioWorkers[contactUri].sid);
       }
-    }
+    });
+
     //  delete if need to unless its vm
   }
 }

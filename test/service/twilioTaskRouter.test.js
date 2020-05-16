@@ -765,4 +765,88 @@ describe('TwilioTaskRouter class', () => {
       });
     });
   });
+  describe('syncWorkers', () => {
+    let fetchRecordsStub;
+    let fetchWorkersStub;
+    let updateWorkerDetailsStub;
+    let deleteWorkerStub;
+    const createStub = sinon.stub();
+    const originalWorkSpace = taskRouter.workspace;
+
+    before(() => {
+      updateWorkerDetailsStub = sinon.stub(taskRouter, '_updateWorkerDetails');
+      deleteWorkerStub = sinon.stub(taskRouter, '_deleteWorker');
+      fetchWorkersStub = sinon.stub(taskRouter, '_fetchWorkers');
+      fetchRecordsStub = sinon.stub(
+        airtableController,
+        'fetchAllRecordsFromTable',
+      );
+      fetchRecordsStub.returns([
+        {
+          id: 'recXXXXXXXXXX1',
+          fields: {
+            Name: 'John Doe',
+            Phone: '(212) 555-1111',
+            Languages: ['English', 'Russian', 'Mandarin', 'Bangla'],
+          },
+          createdTime: '2020-05-16T11:44:24.000Z',
+        },
+        {
+          id: 'recXXxxxxxxxXXX2',
+          fields: {
+            Name: 'Jane Doe',
+            Phone: '(646) 555-2222',
+            Languages: ['English', 'Spanish'],
+          },
+          createdTime: '2020-05-05T03:55:12.000Z',
+        },
+      ]);
+      fetchWorkersStub.returns({
+        undefined: {
+          sid: config.twilio.vmWorkerSid,
+          friendlyName: 'VM',
+        },
+        '+16465552222': {
+          sid: 'WKxxxxxxxxxxxxxxxxxxxxxxx2',
+          friendlyName: 'Jane Doe',
+          languages: ['English'],
+        },
+        '+12223334444': {
+          sid: 'WKxxxxxxxxxxxxxxxxxxxxxxx1',
+          friendlyName: 'George Bush',
+          languages: ['English'],
+        },
+      });
+      // workersStub.returns({ create: createStub });
+      taskRouter.workspace = { workers: { create: createStub } };
+    });
+    after(() => {
+      fetchRecordsStub.restore();
+      fetchWorkersStub.restore();
+      updateWorkerDetailsStub.restore();
+      deleteWorkerStub.restore();
+      taskRouter.workspace = originalWorkSpace;
+    });
+    it('Syncs twilio workers with data in airtable', async () => {
+      await taskRouter.syncWorkers();
+      expect(deleteWorkerStub.calledOnce).to.equal(true);
+      expect(createStub.calledOnce).to.equal(true);
+      expect(updateWorkerDetailsStub.calledOnce).to.equal(true);
+      expect(deleteWorkerStub.firstCall.firstArg).to.equal(
+        'WKxxxxxxxxxxxxxxxxxxxxxxx1',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[0]).to.equal(
+        'WKxxxxxxxxxxxxxxxxxxxxxxx2',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[1]).to.equal(
+        '{"languages":["English","Spanish"],"contact_uri":"+16465552222"}',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[2]).to.equal('Jane Doe');
+      expect(createStub.firstCall.firstArg).to.eql({
+        attributes:
+          '{"languages":["English","Russian","Mandarin","Bangla"],"contact_uri":"+12125551111"}',
+        friendlyName: 'John Doe',
+      });
+    });
+  });
 });
