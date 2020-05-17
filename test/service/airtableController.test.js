@@ -361,4 +361,66 @@ describe('airtableController', () => {
       expect(axiosStub.calledTwice).to.equal(true);
     });
   });
+
+  describe('findByFieldAndUpdate', () => {
+    const tableName = 'Voice Mails';
+    let firstPageStub;
+    let baseStub;
+    let selectedBaseStub;
+    let updateStub;
+    let tableStub;
+    beforeEach(() => {
+      baseStub = sinon.stub(airtableController.airtable, 'base');
+      firstPageStub = sinon.stub();
+      selectedBaseStub = sinon.stub();
+      tableStub = sinon.stub();
+      updateStub = sinon.stub(airtableController, 'updateRecord');
+      baseStub.returns(tableStub);
+      tableStub.returns({ select: selectedBaseStub });
+      selectedBaseStub.returns({ firstPage: firstPageStub });
+    });
+    afterEach(() => {
+      baseStub.restore();
+      updateStub.restore();
+    });
+    it('Finds a record, then updates it', async () => {
+      const fields = {};
+      firstPageStub.callsArgWith(0, undefined, [{ id: 'recXXXXXXXX' }]);
+      await airtableController.findByFieldAndUpdate(
+        config.airtable.vmBase,
+        'Voice Mails',
+        fields,
+        'Call ID',
+        'REXXXXXXXX',
+      );
+      expect(baseStub.firstCall.firstArg).to.equal(config.airtable.vmBase);
+      expect(tableStub.firstCall.firstArg).to.equal(tableName);
+      expect(selectedBaseStub.firstCall.firstArg).to.eql({
+        filterByFormula: '{Call ID} = "REXXXXXXXX"',
+      });
+      expect(updateStub.firstCall.args[0]).to.equal(config.airtable.vmBase);
+      expect(updateStub.firstCall.args[1]).to.equal(tableName);
+      expect(updateStub.firstCall.args[2]).to.equal('recXXXXXXXX');
+      expect(updateStub.firstCall.args[3]).to.equal(fields);
+    });
+  });
+  describe('saveTranscript', () => {
+    let stub;
+    const transcript = 'Some boring vm';
+    const recordingId = 'RExxxxxxxxxxx';
+    beforeEach(() => {
+      stub = sinon.stub(airtableController, 'findByFieldAndUpdate');
+    });
+    afterEach(() => {
+      stub.restore();
+    });
+    it('Uses findByFieldAndUpdate', () => {
+      airtableController.saveTranscript(recordingId, transcript);
+      expect(stub.firstCall.args[0]).to.equal(config.airtable.vmBase);
+      expect(stub.firstCall.args[1]).to.equal('Voice Mails');
+      expect(stub.firstCall.args[2]).to.eql({ Transcript: transcript });
+      expect(stub.firstCall.args[3]).to.equal('Call ID');
+      expect(stub.firstCall.args[4]).to.equal(recordingId);
+    });
+  });
 });

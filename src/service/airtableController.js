@@ -49,6 +49,40 @@ class AirtableController {
     }
   }
 
+  async findByFieldAndUpdate(baseId, table, fields, field, fieldValue) {
+    const base = this.airtable.base(baseId);
+    await base(table)
+      .select({
+        filterByFormula: `{${field}} = "${fieldValue}"`,
+      })
+      .firstPage(async (err, records) => {
+        if (err) {
+          logger.error(err);
+          return;
+        }
+        if (records.length === 0) {
+          logger.error(`No records found for ${field}="${fieldValue}"`);
+          return;
+        }
+        if (records.length > 1) {
+          logger.error(`Multiple records found for ${field}="${fieldValue}"`);
+          return;
+        }
+        const recId = records[0].id;
+        await this.updateRecord(baseId, table, recId, fields);
+      });
+  }
+
+  async saveTranscript(recordingId, Transcript) {
+    await this.findByFieldAndUpdate(
+      config.airtable.vmBase,
+      'Voice Mails',
+      { Transcript },
+      'Call ID',
+      recordingId,
+    );
+  }
+
   async updateRecord(baseId, table, recordId, fields) {
     const base = this.airtable.base(baseId);
     const update = util.promisify(base(table).update);

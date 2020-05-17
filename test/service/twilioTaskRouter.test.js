@@ -4,7 +4,7 @@ const taskRouter = require('../../src/service/twilioTaskRouter');
 const config = require('../../src/config');
 const airtableController = require('../../src/service/airtableController');
 
-describe.only('TwilioTaskRouter class', () => {
+describe('TwilioTaskRouter class', () => {
   const activityObj = {
     Offline: 'WAbaloney1',
     Available: 'WAbaloney2',
@@ -329,6 +329,52 @@ describe.only('TwilioTaskRouter class', () => {
     });
   });
 
+  describe('handleNewTranscription', () => {
+    const event = {
+      TranscriptionSid: 'TRxxxxxxxxxxxxxx',
+      RecordingSid: 'RExxxxxxxxxxxxxxxxx',
+      CallStatus: 'completed',
+      AccountSid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      TranscriptionText:
+        'My name is John Doe and I am testing out the transcription feature.',
+      Caller: '+1234567890',
+      TranscriptionStatus: 'completed',
+      CallSid: 'CAxxxxxxxxxxxxx',
+      To: '+12125551234',
+      ForwardedFrom: '+12125555678',
+    };
+    let saveTranscriptStub;
+    let transcriptionsStub;
+    let removeStub;
+    const originalClient = taskRouter.client;
+    beforeEach(() => {
+      saveTranscriptStub = sinon.stub(airtableController, 'saveTranscript');
+      // transcriptionsStub = sinon.stub(taskRouter.client, 'transcriptions');
+      transcriptionsStub = sinon.stub();
+      removeStub = sinon.stub();
+      taskRouter.client = { transcriptions: transcriptionsStub };
+      transcriptionsStub.returns({ remove: removeStub });
+    });
+    afterEach(() => {
+      saveTranscriptStub.restore();
+      taskRouter.client = originalClient;
+    });
+    it('Saves the transcription to airtable on the correct record and deletes the original', async () => {
+      await taskRouter.handleNewTranscription(event);
+      expect(saveTranscriptStub.firstCall.firstArg).to.equal(
+        event.RecordingSid,
+      );
+      expect(saveTranscriptStub.firstCall.lastArg).to.equal(
+        event.TranscriptionText,
+      );
+      expect(transcriptionsStub.called).to.equal(true);
+      expect(transcriptionsStub.firstCall.firstArg).to.equal(
+        event.TranscriptionSid,
+      );
+      expect(removeStub.calledOnce).to.equal(true);
+    });
+  });
+
   describe('handleWorkerBridgeDisconnect', () => {
     let getWorkerReservationsStub;
     let updateTaskStub;
@@ -369,9 +415,21 @@ describe.only('TwilioTaskRouter class', () => {
   describe('sendToVM', () => {
     const callSid = 'CAxxxxxxxxxxxx';
     // const statusCallBack = `https://${config.hostName}/api/vm-recording-ended`;
-    const event = {
+    const englishEvent = {
       TaskAttributes:
         '{"from_country":"US","called":"+12345678901","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAxxxxxxxxxxxx","account_sid":"ACxxxxxxxxxxxxxxxx","from_zip":"10601","from":"+12223334444","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+12223334455","caller_city":"WHITE PLAINS","to":"+12223334455"}',
+      ReservationSid: 'WRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      WorkspaceSid: 'WSxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      TaskQueueSid: 'WQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      WorkerSid: config.twilio.vmWorkerSid,
+
+      TaskSid: 'WTxxxxxxxxxxxx',
+      WorkerAttributes:
+        '{"languages":["English"],"contact_uri":"+12223334567"}',
+    };
+    const spanishEvent = {
+      TaskAttributes:
+        '{"from_country":"US","called":"+12345678901","selected_language":"Spanish","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAxxxxxxxxxxxx","account_sid":"ACxxxxxxxxxxxxxxxx","from_zip":"10601","from":"+12223334444","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+12223334455","caller_city":"WHITE PLAINS","to":"+12223334455"}',
       ReservationSid: 'WRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
       WorkspaceSid: 'WSxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
       TaskQueueSid: 'WQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
@@ -402,18 +460,37 @@ describe.only('TwilioTaskRouter class', () => {
       afterEach(() => {
         updateTaskStub.restore();
       });
-      it('When VM is enabled, Plays a message then triggers a recording', async () => {
+      it('When VM, and transcription is enabled and English is selected, Plays a message then triggers a recording with transcription', async () => {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*" transcribe="true" transcribeCallback="https://ay.ngrok.io/api/new-transcription"/><Say>I did not receive a recording</Say></Response>`;
+        const updateObj = {
+          twiml,
+        };
+        config.twilio.isVmEnabled = true;
+        expect(await taskRouter.sendToVm(englishEvent)).to.equal(undefined);
+        expect(updateReservationStub.firstCall.firstArg).to.equal(
+          englishEvent.WorkerSid,
+        );
+        expect(updateReservationStub.firstCall.args[1]).to.equal(
+          englishEvent.ReservationSid,
+        );
+        expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
+        expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
+        expect(updateCallStub.firstCall.lastArg).to.eql(updateObj);
+        expect(updateTaskStub.notCalled).to.equal(true);
+      });
+      it('When VM, and transcription is enabled and English is NOT selected, Plays a message then triggers a recording with transcription', async () => {
+        config.twilio.isVmEnabled = true;
         const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*"/><Say>I did not receive a recording</Say></Response>`;
         const updateObj = {
           twiml,
         };
         config.twilio.isVmEnabled = true;
-        expect(await taskRouter.sendToVm(event)).to.equal(undefined);
+        expect(await taskRouter.sendToVm(spanishEvent)).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
-          event.WorkerSid,
+          spanishEvent.WorkerSid,
         );
         expect(updateReservationStub.firstCall.args[1]).to.equal(
-          event.ReservationSid,
+          spanishEvent.ReservationSid,
         );
         expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
         expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
@@ -426,17 +503,17 @@ describe.only('TwilioTaskRouter class', () => {
           twiml:
             '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon</Say><Hangup/></Response>',
         };
-        expect(await taskRouter.sendToVm(event)).to.equal(undefined);
+        expect(await taskRouter.sendToVm(englishEvent)).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
-          event.WorkerSid,
+          englishEvent.WorkerSid,
         );
         expect(updateReservationStub.firstCall.args[1]).to.equal(
-          event.ReservationSid,
+          englishEvent.ReservationSid,
         );
         expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
         expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
         expect(updateCallStub.firstCall.lastArg).to.eql(updateObj);
-        expect(updateTaskStub.firstCall.args[0]).to.equal(event.TaskSid);
+        expect(updateTaskStub.firstCall.args[0]).to.equal(englishEvent.TaskSid);
         expect(updateTaskStub.firstCall.args[1]).to.equal('completed');
         expect(updateTaskStub.firstCall.args[2]).to.equal(
           'TaskRouter queue time out',

@@ -217,6 +217,14 @@ class TwilioTaskRouter {
     return response.toString();
   }
 
+  async handleNewTranscription(event) {
+    await airtableController.saveTranscript(
+      event.RecordingSid,
+      event.TranscriptionText,
+    );
+    this.client.transcriptions(event.TranscriptionSid).remove();
+  }
+
   async handleVmRecordingEnded(event) {
     const task = await this._fetchTaskForCallSid(event.CallSid);
     const attributes = JSON.parse(task.attributes);
@@ -260,12 +268,39 @@ class TwilioTaskRouter {
 
   async sendToVm(event) {
     const response = new twilio.twiml.VoiceResponse();
+    const { isVmEnabled, isEnglishVmTranscriptionEnabled } = config.twilio;
+    const isEnglish =
+      JSON.parse(event.TaskAttributes).selected_language === 'English';
     await this._updateReservationStatus(
       event.WorkerSid,
       event.ReservationSid,
       'accepted',
     );
-    if (config.twilio.isVmEnabled) {
+    if (isVmEnabled && isEnglishVmTranscriptionEnabled && isEnglish) {
+      response.say(
+        'Please leave a message at the beep.\nPress the star key when finished.',
+      );
+      response.record({
+        action: `https://${config.hostName}/api/vm-recording-ended`,
+        method: 'POST',
+        maxLength: 20,
+        finishOnKey: '*',
+        transcribe: true,
+        transcribeCallback: `https://${config.hostName}/api/new-transcription`,
+      });
+      response.say('I did not receive a recording');
+    } else if (isVmEnabled && isEnglishVmTranscriptionEnabled && !isEnglish) {
+      response.say(
+        'Please leave a message at the beep.\nPress the star key when finished.',
+      );
+      response.record({
+        action: `https://${config.hostName}/api/vm-recording-ended`,
+        method: 'POST',
+        maxLength: 20,
+        finishOnKey: '*',
+      });
+      response.say('I did not receive a recording');
+    } else if (isVmEnabled && !isEnglishVmTranscriptionEnabled) {
       response.say(
         'Please leave a message at the beep.\nPress the star key when finished.',
       );

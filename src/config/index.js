@@ -14,6 +14,10 @@ module.exports = {
     isVmEnabled: process.env.ENABLE_VM
       ? process.env.ENABLE_VM.toLowerCase().trim() === 'true'
       : false,
+    isEnglishVmTranscriptionEnabled: process.env.ENABLE_VM_ENGLISH_TRANSCRIPTION
+      ? process.env.ENABLE_VM_ENGLISH_TRANSCRIPTION.toLowerCase().trim() ===
+        'true'
+      : false,
   },
   airtable: {
     phoneBase: process.env.PHONE_BASE,
