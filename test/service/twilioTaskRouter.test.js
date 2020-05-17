@@ -461,7 +461,7 @@ describe('TwilioTaskRouter class', () => {
         updateTaskStub.restore();
       });
       it('When VM, and transcription is enabled and English is selected, Plays a message then triggers a recording with transcription', async () => {
-        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*" transcribe="true" transcribeCallback="https://ay.ngrok.io/api/new-transcription"/><Say>I did not receive a recording</Say></Response>`;
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*" transcribe="true" transcribeCallback="https://${config.hostName}/api/new-transcription"/><Say>I did not receive a recording</Say></Response>`;
         const updateObj = {
           twiml,
         };
