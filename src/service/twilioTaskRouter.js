@@ -187,14 +187,16 @@ class TwilioTaskRouter {
     const { client } = this;
     const callerId = taskAttributes.called;
     const workerContactNumber = workerAttributes.contact_uri;
-
+    const options = {
+      to: workerContactNumber,
+      from: callerId,
+      url: `https://${config.hostName}/api/agent-connected`,
+    };
+    if (config.twilio.isAmdEnabled) {
+      options.machineDetection = 'Enable';
+    }
     try {
-      await client.calls.create({
-        to: workerContactNumber,
-        from: callerId,
-        machineDetection: 'Enable',
-        url: `https://${config.hostName}/api/agent-connected`,
-      });
+      await client.calls.create(options);
     } catch (error) {
       logger.error(error);
     }

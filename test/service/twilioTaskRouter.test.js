@@ -140,23 +140,44 @@ describe('TwilioTaskRouter class', () => {
       createStub.restore();
       sendToVmStub.restore();
     });
-    it('Makes an outbound call to the assigned agent if NOT vm', async () => {
-      const event = {
-        TaskAttributes:
-          '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
-        WorkerAttributes:
-          '{"languages":["English"],"contact_uri":"+16667778888"}',
-        WorkerSid: 'someSID',
-      };
-      createStub.resolves(null);
-      await taskRouter.handleCallAssignment(event);
-      expect(createStub.firstCall.firstArg).to.eql({
-        to: '+16667778888',
-        from: '+12223334444',
-        machineDetection: 'Enable',
-        url: `https://${config.hostName}/api/agent-connected`,
+    describe('Makes an outbound call to the assigned agent if NOT vm', () => {
+      it('Enables AMD when isAmdEnabled is true ', async () => {
+        config.twilio.isAmdEnabled = true;
+        const event = {
+          TaskAttributes:
+            '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
+          WorkerAttributes:
+            '{"languages":["English"],"contact_uri":"+16667778888"}',
+          WorkerSid: 'someSID',
+        };
+        createStub.resolves(null);
+        await taskRouter.handleCallAssignment(event);
+        expect(createStub.firstCall.firstArg).to.eql({
+          to: '+16667778888',
+          from: '+12223334444',
+          machineDetection: 'Enable',
+          url: `https://${config.hostName}/api/agent-connected`,
+        });
+        expect(sendToVmStub.notCalled).to.be.equal(true);
       });
-      expect(sendToVmStub.notCalled).to.be.equal(true);
+      it('Disables AMD when isAmdEnabled is false ', async () => {
+        config.twilio.isAmdEnabled = false;
+        const event = {
+          TaskAttributes:
+            '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
+          WorkerAttributes:
+            '{"languages":["English"],"contact_uri":"+16667778888"}',
+          WorkerSid: 'someSID',
+        };
+        createStub.resolves(null);
+        await taskRouter.handleCallAssignment(event);
+        expect(createStub.firstCall.firstArg).to.eql({
+          to: '+16667778888',
+          from: '+12223334444',
+          url: `https://${config.hostName}/api/agent-connected`,
+        });
+        expect(sendToVmStub.notCalled).to.be.equal(true);
+      });
     });
     it('Invoke sendToVM if assigned to VM worker', async () => {
       const event = {
