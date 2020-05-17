@@ -141,6 +141,9 @@ class TwilioTaskRouter {
       'pending',
     );
     if (!pendingReservation) {
+      response.say(
+        "We're sorry but the caller has disconnected before you got on the phone.",
+      );
       response.hangup();
       return response.toString();
     }

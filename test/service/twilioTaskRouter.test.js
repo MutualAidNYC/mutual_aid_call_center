@@ -334,7 +334,7 @@ describe('TwilioTaskRouter class', () => {
       fetchTaskStub.resolves(task);
 
       expect(await taskRouter.handleAgentConnected(event)).to.equal(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>',
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We\'re sorry but the caller has disconnected before you got on the phone.</Say><Hangup/></Response>',
       );
       /* eslint-disable no-unused-expressions */
       expect(
