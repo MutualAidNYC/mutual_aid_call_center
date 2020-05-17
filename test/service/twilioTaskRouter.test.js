@@ -466,6 +466,7 @@ describe('TwilioTaskRouter class', () => {
           twiml,
         };
         config.twilio.isVmEnabled = true;
+        config.twilio.isEnglishVmTranscriptionEnabled = true;
         expect(await taskRouter.sendToVm(englishEvent)).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
           englishEvent.WorkerSid,
@@ -485,6 +486,7 @@ describe('TwilioTaskRouter class', () => {
           twiml,
         };
         config.twilio.isVmEnabled = true;
+        config.twilio.isEnglishVmTranscriptionEnabled = true;
         expect(await taskRouter.sendToVm(spanishEvent)).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
           spanishEvent.WorkerSid,
