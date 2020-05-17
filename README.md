@@ -20,6 +20,7 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
    8. AIRTABLE_API_KEY: airtable api key
    9. TWILIO_TASKROUTER_VM_SID: SID of the woker that represents VM
    10. HOST_NAME: Your hostname for example www.google.com
+   11. ENABLE_VM: true or false, enables or disables voicemail recordings
 4. Run `$ npm install`
 
 # NPM Scripts

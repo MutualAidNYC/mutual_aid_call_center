@@ -4,7 +4,7 @@ const taskRouter = require('../../src/service/twilioTaskRouter');
 const config = require('../../src/config');
 const airtableController = require('../../src/service/airtableController');
 
-describe('TwilioTaskRouter class', () => {
+describe.only('TwilioTaskRouter class', () => {
   const activityObj = {
     Offline: 'WAbaloney1',
     Available: 'WAbaloney2',
@@ -367,14 +367,8 @@ describe('TwilioTaskRouter class', () => {
   });
 
   describe('sendToVM', () => {
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*"/><Say>I did not receive a recording</Say></Response>`;
     const callSid = 'CAxxxxxxxxxxxx';
     // const statusCallBack = `https://${config.hostName}/api/vm-recording-ended`;
-    const updateObj = {
-      twiml,
-      // statusCallBack,
-      // statusCallbackMethod: 'POST',
-    };
     const event = {
       TaskAttributes:
         '{"from_country":"US","called":"+12345678901","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAxxxxxxxxxxxx","account_sid":"ACxxxxxxxxxxxxxxxx","from_zip":"10601","from":"+12223334444","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+12223334455","caller_city":"WHITE PLAINS","to":"+12223334455"}',
@@ -389,33 +383,65 @@ describe('TwilioTaskRouter class', () => {
     };
     let updateReservationStub;
     let updateCallStub;
-    before(() => {
+    beforeEach(() => {
       updateReservationStub = sinon.stub(
         taskRouter,
         '_updateReservationStatus',
       );
       updateCallStub = sinon.stub(taskRouter, '_updateCall');
     });
-    after(() => {
+    afterEach(() => {
       updateReservationStub.restore();
       updateCallStub.restore();
     });
-    it('Plays a message then triggers a recording', async () => {
-      expect(await taskRouter.sendToVm(event)).to.equal(undefined);
-      expect(updateReservationStub.firstCall.firstArg).to.equal(
-        event.WorkerSid,
-      );
-      expect(updateReservationStub.firstCall.args[1]).to.equal(
-        event.ReservationSid,
-      );
-      expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
-      expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
-      expect(updateCallStub.firstCall.lastArg).to.eql(updateObj);
-
-      // redirect call (update call?)
-      // say message
-      // record message
-      // have a message if no recording
+    describe('Handles VM enable/disable flags', () => {
+      let updateTaskStub;
+      beforeEach(() => {
+        updateTaskStub = sinon.stub(taskRouter, '_updateTask');
+      });
+      afterEach(() => {
+        updateTaskStub.restore();
+      });
+      it('When VM is enabled, Plays a message then triggers a recording', async () => {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please leave a message at the beep.\nPress the star key when finished.</Say><Record action="https://${config.hostName}/api/vm-recording-ended" method="POST" maxLength="20" finishOnKey="*"/><Say>I did not receive a recording</Say></Response>`;
+        const updateObj = {
+          twiml,
+        };
+        config.twilio.isVmEnabled = true;
+        expect(await taskRouter.sendToVm(event)).to.equal(undefined);
+        expect(updateReservationStub.firstCall.firstArg).to.equal(
+          event.WorkerSid,
+        );
+        expect(updateReservationStub.firstCall.args[1]).to.equal(
+          event.ReservationSid,
+        );
+        expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
+        expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
+        expect(updateCallStub.firstCall.lastArg).to.eql(updateObj);
+        expect(updateTaskStub.notCalled).to.equal(true);
+      });
+      it('When VM is disabled, Plays a message then hangs up', async () => {
+        config.twilio.isVmEnabled = false;
+        const updateObj = {
+          twiml:
+            '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon</Say><Hangup/></Response>',
+        };
+        expect(await taskRouter.sendToVm(event)).to.equal(undefined);
+        expect(updateReservationStub.firstCall.firstArg).to.equal(
+          event.WorkerSid,
+        );
+        expect(updateReservationStub.firstCall.args[1]).to.equal(
+          event.ReservationSid,
+        );
+        expect(updateReservationStub.firstCall.args[2]).to.equal('accepted');
+        expect(updateCallStub.firstCall.firstArg).to.equal(callSid);
+        expect(updateCallStub.firstCall.lastArg).to.eql(updateObj);
+        expect(updateTaskStub.firstCall.args[0]).to.equal(event.TaskSid);
+        expect(updateTaskStub.firstCall.args[1]).to.equal('completed');
+        expect(updateTaskStub.firstCall.args[2]).to.equal(
+          'TaskRouter queue time out',
+        );
+      });
     });
   });
 

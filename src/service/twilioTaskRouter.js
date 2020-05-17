@@ -258,23 +258,31 @@ class TwilioTaskRouter {
     }
   }
 
-  sendToVm(event) {
-    this._updateReservationStatus(
+  async sendToVm(event) {
+    const response = new twilio.twiml.VoiceResponse();
+    await this._updateReservationStatus(
       event.WorkerSid,
       event.ReservationSid,
       'accepted',
     );
-    const response = new twilio.twiml.VoiceResponse();
-    response.say(
-      'Please leave a message at the beep.\nPress the star key when finished.',
-    );
-    response.record({
-      action: `https://${config.hostName}/api/vm-recording-ended`,
-      method: 'POST',
-      maxLength: 20,
-      finishOnKey: '*',
-    });
-    response.say('I did not receive a recording');
+    if (config.twilio.isVmEnabled) {
+      response.say(
+        'Please leave a message at the beep.\nPress the star key when finished.',
+      );
+      response.record({
+        action: `https://${config.hostName}/api/vm-recording-ended`,
+        method: 'POST',
+        maxLength: 20,
+        finishOnKey: '*',
+      });
+      response.say('I did not receive a recording');
+    } else {
+      response.say(
+        'We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon',
+      );
+      response.hangup();
+      this._updateTask(event.TaskSid, 'completed', 'TaskRouter queue time out');
+    }
 
     this._updateCall(JSON.parse(event.TaskAttributes).call_sid, {
       twiml: response.toString(),
