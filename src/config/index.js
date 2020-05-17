@@ -11,6 +11,13 @@ module.exports = {
     authToken: process.env.AUTH_TOKEN,
     workspaceSid: process.env.WORKSPACE_SID,
     vmWorkerSid: process.env.TWILIO_TASKROUTER_VM_SID,
+    isVmEnabled: process.env.ENABLE_VM
+      ? process.env.ENABLE_VM.toLowerCase().trim() === 'true'
+      : false,
+    isEnglishVmTranscriptionEnabled: process.env.ENABLE_VM_ENGLISH_TRANSCRIPTION
+      ? process.env.ENABLE_VM_ENGLISH_TRANSCRIPTION.toLowerCase().trim() ===
+        'true'
+      : false,
   },
   airtable: {
     phoneBase: process.env.PHONE_BASE,
