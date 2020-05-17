@@ -23,6 +23,7 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
    11. Optional variables, omittance = false
        1. ENABLE_VM: `true`or`false`, enables or disables voicemail recordings
        2. ENABLE_VM_ENGLISH_TRANSCRIPTION: `true` or `false` enables of diable transcription of english VMs
+       3. ENABLE_ANSWER_MACHINE_DETECTION: `true` or `false` enables automatic answer machine detection (AMD) when calling volunteers
 4. Run `$ npm install`
 
 # NPM Scripts

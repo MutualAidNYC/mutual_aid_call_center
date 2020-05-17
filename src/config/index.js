@@ -18,6 +18,10 @@ module.exports = {
       ? process.env.ENABLE_VM_ENGLISH_TRANSCRIPTION.toLowerCase().trim() ===
         'true'
       : false,
+    isAmdEnabled: process.env.ENABLE_ANSWER_MACHINE_DETECTION
+      ? process.env.ENABLE_ANSWER_MACHINE_DETECTION.toLowerCase().trim() ===
+        'true'
+      : false,
   },
   airtable: {
     phoneBase: process.env.PHONE_BASE,
