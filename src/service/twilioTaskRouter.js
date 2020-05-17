@@ -147,6 +147,15 @@ class TwilioTaskRouter {
       response.hangup();
       return response.toString();
     }
+    const machineAnswerBys = [
+      'machine_end_beep',
+      'machine_end_silence',
+      'machine_end_other',
+      'fax',
+      'machine_start',
+    ];
+    const { taskSid } = pendingReservation;
+
     if (event.AnsweredBy === 'human') {
       logger.info('Human detected');
       this._updateReservationStatus(
@@ -154,10 +163,9 @@ class TwilioTaskRouter {
         pendingReservation.sid,
         'accepted',
       );
-
-      const { taskSid } = pendingReservation;
       const task = await this._fetchTask(taskSid);
-      const callerCallSid = JSON.parse(task.attributes).call_sid;
+      const attributes = JSON.parse(task.attributes);
+      const callerCallSid = attributes.call_sid;
       const agentCallSid = event.CallSid;
 
       response.dial().conference({ endConferenceOnExit: true }, callerCallSid);
@@ -169,14 +177,31 @@ class TwilioTaskRouter {
       });
       return '<Response><Pause length="5"/></Response>';
     }
-    logger.info('AnsweredBy: %s', event.AnsweredBy);
-    this._updateReservationStatus(
-      workerSid,
-      pendingReservation.sid,
-      'rejected',
-    );
+    if (machineAnswerBys.includes(event.AnsweredBy)) {
+      this._updateReservationStatus(
+        workerSid,
+        pendingReservation.sid,
+        'rejected',
+      );
+      response.say('Machine detected, goodbye');
+      response.hangup();
+      return response.toString();
+    }
 
-    return response.hangup().toString();
+    // either unknown dection, or AMD is disabled, either way same thing
+    const task = await this._fetchTask(taskSid);
+    const attributes = JSON.parse(task.attributes);
+    const gather = response.gather({
+      action: `https://${config.hostName}/api/agent-gather`,
+      method: 'POST',
+      numDigits: 1,
+    });
+    gather.say(
+      `You are receiving a ${attributes.selected_language} call from Mutual Aid en why see, press any key to accept`,
+    );
+    response.say("We didn't receive any input. Goodbye!");
+    response.hangup();
+    return response.toString();
   }
 
   async handleCallAssignment(event) {
