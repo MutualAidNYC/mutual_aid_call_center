@@ -1,5 +1,4 @@
 const twilio = require('twilio');
-const moment = require('moment-timezone');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
 const airtableController = require('./airtableController');
@@ -17,15 +16,6 @@ const fetchActivities = async (obj) => {
 
 const saveVmToDb = (url, language, phone, callSid) => {
   return airtableController.addVmToDb(callSid, url, language, phone.slice(2));
-};
-
-const findMostRecentlyUpdatedReservation = (reservations) => {
-  reservations.sort((res1, res2) => {
-    const res1DateUpdated = moment(res1.dateUpdated);
-    const res2DateUpdated = moment(res2.dateUpdated);
-    return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : -1;
-  });
-  return reservations[0];
 };
 
 const isLanguagesDifferent = (language1, language2) => {
@@ -166,16 +156,19 @@ class TwilioTaskRouter {
       const task = await this._fetchTask(taskSid);
       const attributes = JSON.parse(task.attributes);
       const callerCallSid = attributes.call_sid;
-      const agentCallSid = event.CallSid;
+      const conferenceRoomName = taskSid;
 
-      response.dial().conference({ endConferenceOnExit: true }, callerCallSid);
+      response.dial().conference(
+        {
+          endConferenceOnExit: true,
+          statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
+          statusCallbackMethod: 'POST',
+          statusCallbackEvent: 'end',
+        },
+        conferenceRoomName,
+      );
       this._updateCall(callerCallSid, { twiml: response.toString() });
-      this._updateCall(agentCallSid, {
-        twiml: response.toString(),
-        statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
-        statusCallbackMethod: 'POST',
-      });
-      return '<Response><Pause length="5"/></Response>';
+      return response.toString();
     }
     if (machineAnswerBys.includes(event.AnsweredBy)) {
       this._updateReservationStatus(
@@ -284,22 +277,11 @@ class TwilioTaskRouter {
     return response.toString();
   }
 
-  async handleWorkerBridgeDisconnect(event) {
-    const workerSid = this.workers[event.Called].sid;
-
-    const reservations = await this._getWorkersReservations(workerSid, {
-      reservationStatus: 'accepted',
-    });
-
-    if (reservations.length > 0) {
-      const reservation = findMostRecentlyUpdatedReservation(reservations);
-      const status = 'completed';
-      const reason =
-        'Call with agent ended after one or the other party hung up';
-      await this._updateTask(reservation.taskSid, status, reason);
-    } else {
-      logger.error('No task found!');
-    }
+  handleWorkerBridgeDisconnect(event) {
+    const taskSid = event.FriendlyName; // the conferences are using tasks as the room number
+    const status = 'completed';
+    const reason = event.Reason;
+    this._updateTask(taskSid, status, reason);
   }
 
   async sendToVm(event) {

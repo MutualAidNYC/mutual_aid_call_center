@@ -242,15 +242,12 @@ describe('TwilioTaskRouter class', () => {
         attributes:
           '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
       };
-      const twiml =
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference endConferenceOnExit="true">CAbaloney2</Conference></Dial></Response>';
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference endConferenceOnExit="true" statusCallback="https://${config.hostName}/api/worker-bridge-disconnect" statusCallbackMethod="POST" statusCallbackEvent="end">${reservations[0].taskSid}</Conference></Dial></Response>`;
 
       getWorkersReservationsStub.resolves(reservations);
       fetchTaskStub.resolves(task);
 
-      expect(await taskRouter.handleAgentConnected(event)).to.equal(
-        '<Response><Pause length="5"/></Response>',
-      );
+      expect(await taskRouter.handleAgentConnected(event)).to.equal(twiml);
       expect(
         getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
           reservationStatus: 'pending',
@@ -267,13 +264,6 @@ describe('TwilioTaskRouter class', () => {
         true,
       );
       expect(updateCallStub.calledWith('CAbaloney2', { twiml })).to.equal(true);
-      expect(
-        updateCallStub.calledWith(event.CallSid, {
-          twiml,
-          statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
-          statusCallbackMethod: 'POST',
-        }),
-      ).to.equal(true);
     });
     describe('Handles answer by non-human', () => {
       it('handles "machine_end_beep', async () => {
@@ -644,39 +634,28 @@ describe('TwilioTaskRouter class', () => {
   });
 
   describe('handleWorkerBridgeDisconnect', () => {
-    let getWorkerReservationsStub;
+    const event = {
+      FriendlyName: 'WTxxxxxxxxxxxxxxxxxxxxxxxx',
+      CallSidEndingConference: 'CAxxxxxxxxxx',
+      ConferenceSid: 'CFxxxxxxxxxxxxxxxxxxxxxx',
+      StatusCallbackEvent: 'conference-end',
+      Reason:
+        'Participant CAxxxxxxxxxxxx with endConferenceOnExit left the conference',
+    };
     let updateTaskStub;
     before(() => {
-      const reservations = [
-        {
-          dateUpdated: '2020-05-13T02:27:48.000Z',
-          taskSid: 'WTtasksid1',
-        },
-        {
-          dateUpdated: '2020-05-13T02:28:48.000Z',
-          taskSid: 'WTtasksid2',
-        },
-        {
-          dateUpdated: '2020-05-13T02:30:48.000Z',
-          taskSid: 'WTtasksid3',
-        },
-      ];
-      getWorkerReservationsStub = sinon.stub(
-        taskRouter,
-        '_getWorkersReservations',
-      );
       updateTaskStub = sinon.stub(taskRouter, '_updateTask');
-      getWorkerReservationsStub.returns(reservations);
       updateTaskStub.resolves();
     });
     after(() => {
-      getWorkerReservationsStub.restore();
       updateTaskStub.restore();
     });
-    it('Marks the task as complete', async () => {
+    it('Marks the task as complete', () => {
       taskRouter.workers = workersObj;
-      await taskRouter.handleWorkerBridgeDisconnect({ Called: '+15556667777' });
-      expect(updateTaskStub.firstCall.firstArg).to.be.equal('WTtasksid3');
+      taskRouter.handleWorkerBridgeDisconnect(event);
+      expect(updateTaskStub.firstCall.args[0]).to.be.equal(event.FriendlyName);
+      expect(updateTaskStub.firstCall.args[1]).to.be.equal('completed');
+      expect(updateTaskStub.firstCall.args[2]).to.be.equal(event.Reason);
     });
   });
 
