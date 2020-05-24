@@ -195,6 +195,7 @@ class TwilioTaskRouter {
       action: `https://${config.hostName}/api/agent-gather`,
       method: 'POST',
       numDigits: 1,
+      actionOnEmptyResult: true,
     });
     gather.say(
       `You are receiving a ${attributes.selected_language} call from Mutual Aid en why see, press any key to accept`,
@@ -202,6 +203,11 @@ class TwilioTaskRouter {
     response.say("We didn't receive any input. Goodbye!");
     response.hangup();
     return response.toString();
+  }
+
+  handleAgentGather(event) {
+    console.log('event %O', event);
+    return undefined;
   }
 
   async handleCallAssignment(event) {

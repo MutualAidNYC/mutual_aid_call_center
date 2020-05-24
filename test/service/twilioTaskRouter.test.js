@@ -500,7 +500,7 @@ describe('TwilioTaskRouter class', () => {
         fetchTaskStub.resolves(task);
 
         expect(await taskRouter.handleAgentConnected(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
         );
         expect(
           getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
@@ -533,7 +533,7 @@ describe('TwilioTaskRouter class', () => {
         fetchTaskStub.resolves(task);
 
         expect(await taskRouter.handleAgentConnected(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
         );
         expect(
           getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
@@ -575,6 +575,25 @@ describe('TwilioTaskRouter class', () => {
       expect(fetchTaskStub.notCalled).to.equal(true);
       expect(updateCallStub.notCalled).to.equal(true);
       expect(updateCallStub.notCalled).to.equal(true);
+    });
+  });
+
+  describe('handelAgentGather', () => {
+    describe('When a DTMF tone is detected', () => {
+      const event = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+19178821044',
+        Digits: '2',
+        FinishedOnKey: '',
+      };
+      it('Bridges if the caller is still on the line', () => {
+        expect(taskRouter.handleAgentGather()).to.equal(undefined);
+      });
+      it('Plays a message if the caller has disconnected', () => {});
+      describe('When no DTMF tones are detected', () => {
+        it('Rejects the reservation plays a message and hangs up', () => {});
+      });
     });
   });
 
