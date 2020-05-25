@@ -569,20 +569,103 @@ describe('TwilioTaskRouter class', () => {
   });
 
   describe('handelAgentGather', () => {
+    let getPendingReservationStub;
+    let acceptReservationAndbridgeAgentStub;
+    let updateReservationStatusStub;
+    beforeEach(() => {
+      getPendingReservationStub = sinon.stub(
+        taskRouter,
+        '_getPendingReservation',
+      );
+      acceptReservationAndbridgeAgentStub = sinon.stub(
+        taskRouter,
+        '_acceptReservationAndbridgeAgent',
+      );
+      updateReservationStatusStub = sinon.stub(
+        taskRouter,
+        '_updateReservationStatus',
+      );
+      taskRouter.workers = workersObj;
+    });
+    afterEach(() => {
+      getPendingReservationStub.restore();
+      acceptReservationAndbridgeAgentStub.restore();
+      updateReservationStatusStub.restore();
+    });
     describe('When a DTMF tone is detected', () => {
       const event = {
         CallSid: 'CAxxxxxxxxxxxxxxxxxx',
         CallStatus: 'in-progress',
-        Called: '+19178821044',
+        Called: '+12223334444',
         Digits: '2',
         FinishedOnKey: '',
       };
-      it('Bridges if the caller is still on the line', () => {
-        expect(taskRouter.handleAgentGather()).to.equal(undefined);
+      const event2 = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+12223334444',
+        Digits: '',
+        FinishedOnKey: '',
+      };
+      it('Bridges if the caller is still on the line', async () => {
+        const reservation = {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        };
+        getPendingReservationStub.resolves(reservation);
+        acceptReservationAndbridgeAgentStub.resolves('some twiml');
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          'some twiml',
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.firstCall.firstArg).to.equal(
+          reservation,
+        );
+        expect(acceptReservationAndbridgeAgentStub.firstCall.lastArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(updateReservationStatusStub.notCalled).to.equal(true);
       });
-      it('Plays a message if the caller has disconnected', () => {});
+      it('Plays a message if the caller has disconnected', async () => {
+        getPendingReservationStub.resolves(undefined);
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Say>We're sorry but the caller has disconnected.</Say><Hangup/></Response>`,
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+        expect(updateReservationStatusStub.notCalled).to.equal(true);
+      });
       describe('When no DTMF tones are detected', () => {
-        it('Rejects the reservation plays a message and hangs up', () => {});
+        it('Rejects the reservation plays a message and hangs up', async () => {
+          const reservation = {
+            sid: 'WRbalone34',
+            taskSid: 'WTbaloneyc4f',
+          };
+          getPendingReservationStub.resolves(reservation);
+
+          expect(await taskRouter.handleAgentGather(event2)).to.equal(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Say>No key presses were detected, goodbye</Say><Hangup/></Response>`,
+          );
+          expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+            workersObj[event2.Called].sid,
+          );
+          expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+          expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
+            workersObj[event2.Called].sid,
+          );
+          expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
+            'WRbalone34',
+          );
+          expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
+            'rejected',
+          );
+        });
       });
     });
   });

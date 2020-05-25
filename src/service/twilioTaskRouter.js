@@ -42,9 +42,9 @@ class TwilioTaskRouter {
     this.workspace.workers(workerSid).remove();
   }
 
-  async _getPendingReservation(workerSid, status) {
+  async _getPendingReservation(workerSid) {
     const pendingReservations = await this._getWorkersReservations(workerSid, {
-      reservationStatus: status,
+      reservationStatus: 'pending',
     });
     return pendingReservations[0];
   }
@@ -125,10 +125,7 @@ class TwilioTaskRouter {
     const response = new VoiceResponse();
     const workerSid = this.workers[event.Called].sid;
 
-    const pendingReservation = await this._getPendingReservation(
-      workerSid,
-      'pending',
-    );
+    const pendingReservation = await this._getPendingReservation(workerSid);
     if (!pendingReservation) {
       response.say(
         "We're sorry but the caller has disconnected before you got on the phone.",
@@ -202,9 +199,30 @@ class TwilioTaskRouter {
     return twiml;
   }
 
-  handleAgentGather(event) {
-    console.log('event %O', event);
-    return undefined;
+  async handleAgentGather(event) {
+    const response = new VoiceResponse();
+    const workerSid = this.workers[event.Called].sid;
+    const pendingReservation = await this._getPendingReservation(workerSid);
+
+    if (!pendingReservation) {
+      response.say("We're sorry but the caller has disconnected.");
+      response.hangup();
+      return response.toString();
+    }
+
+    if (event.Digits.length === 0) {
+      // no digits detected
+      this._updateReservationStatus(
+        workerSid,
+        pendingReservation.sid,
+        'rejected',
+      );
+      response.say('No key presses were detected, goodbye');
+      response.hangup();
+      return response.toString();
+    }
+
+    return this._acceptReservationAndbridgeAgent(pendingReservation, workerSid);
   }
 
   async handleCallAssignment(event) {

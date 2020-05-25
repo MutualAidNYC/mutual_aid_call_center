@@ -9,6 +9,7 @@ describe('GET /api/agent-gather', () => {
   let stub;
   beforeEach(() => {
     stub = sinon.stub(taskRouter, 'handleAgentGather');
+    stub.resolves('some twiml');
   });
   afterEach(() => {
     stub.restore();
@@ -21,5 +22,6 @@ describe('GET /api/agent-gather', () => {
     const res = await request(app).post('/api/agent-gather').send(event);
     expect(res.status).to.equal(200);
     expect(stub.calledOnce).to.equal(true);
+    expect(res.text).to.equal('some twiml');
   });
 });
