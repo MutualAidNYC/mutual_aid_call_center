@@ -123,7 +123,6 @@ class TwilioTaskRouter {
 
   async handleAgentConnected(event) {
     const response = new VoiceResponse();
-    // lets call the assigned worker
     const workerSid = this.workers[event.Called].sid;
 
     const pendingReservation = await this._getPendingReservation(
@@ -147,28 +146,10 @@ class TwilioTaskRouter {
     const { taskSid } = pendingReservation;
 
     if (event.AnsweredBy === 'human') {
-      logger.info('Human detected');
-      this._updateReservationStatus(
+      return this._acceptReservationAndbridgeAgent(
+        pendingReservation,
         workerSid,
-        pendingReservation.sid,
-        'accepted',
       );
-      const task = await this._fetchTask(taskSid);
-      const attributes = JSON.parse(task.attributes);
-      const callerCallSid = attributes.call_sid;
-      const conferenceRoomName = taskSid;
-
-      response.dial().conference(
-        {
-          endConferenceOnExit: true,
-          statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
-          statusCallbackMethod: 'POST',
-          statusCallbackEvent: 'end',
-        },
-        conferenceRoomName,
-      );
-      this._updateCall(callerCallSid, { twiml: response.toString() });
-      return response.toString();
     }
     if (machineAnswerBys.includes(event.AnsweredBy)) {
       this._updateReservationStatus(
@@ -196,6 +177,29 @@ class TwilioTaskRouter {
     response.say("We didn't receive any input. Goodbye!");
     response.hangup();
     return response.toString();
+  }
+
+  async _acceptReservationAndbridgeAgent(reservationObj, workerSid) {
+    const response = new VoiceResponse();
+
+    this._updateReservationStatus(workerSid, reservationObj.sid, 'accepted');
+    const task = await this._fetchTask(reservationObj.taskSid);
+    const attributes = JSON.parse(task.attributes);
+    const callerCallSid = attributes.call_sid;
+    const conferenceRoomName = reservationObj.taskSid;
+
+    response.dial().conference(
+      {
+        endConferenceOnExit: true,
+        statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
+        statusCallbackMethod: 'POST',
+        statusCallbackEvent: 'end',
+      },
+      conferenceRoomName,
+    );
+    const twiml = response.toString();
+    this._updateCall(callerCallSid, { twiml });
+    return twiml;
   }
 
   handleAgentGather(event) {
