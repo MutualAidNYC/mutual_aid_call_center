@@ -16,6 +16,7 @@ require('./api/routes/agent-connected');
 require('./api/routes/worker-bridge-disconnect');
 require('./api/routes/vm-recording-ended');
 require('./api/routes/new-transcription');
+require('./api/routes/agent-gather');
 
 const { setSchedule } = require('./api/routes/schedule');
 

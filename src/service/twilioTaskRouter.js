@@ -1,5 +1,4 @@
 const twilio = require('twilio');
-const moment = require('moment-timezone');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
 const airtableController = require('./airtableController');
@@ -17,15 +16,6 @@ const fetchActivities = async (obj) => {
 
 const saveVmToDb = (url, language, phone, callSid) => {
   return airtableController.addVmToDb(callSid, url, language, phone.slice(2));
-};
-
-const findMostRecentlyUpdatedReservation = (reservations) => {
-  reservations.sort((res1, res2) => {
-    const res1DateUpdated = moment(res1.dateUpdated);
-    const res2DateUpdated = moment(res2.dateUpdated);
-    return res1DateUpdated.isBefore(res2DateUpdated) ? 1 : -1;
-  });
-  return reservations[0];
 };
 
 const isLanguagesDifferent = (language1, language2) => {
@@ -52,9 +42,9 @@ class TwilioTaskRouter {
     this.workspace.workers(workerSid).remove();
   }
 
-  async _getPendingReservation(workerSid, status) {
+  async _getPendingReservation(workerSid) {
     const pendingReservations = await this._getWorkersReservations(workerSid, {
-      reservationStatus: status,
+      reservationStatus: 'pending',
     });
     return pendingReservations[0];
   }
@@ -133,47 +123,106 @@ class TwilioTaskRouter {
 
   async handleAgentConnected(event) {
     const response = new VoiceResponse();
-    // lets call the assigned worker
     const workerSid = this.workers[event.Called].sid;
 
-    const pendingReservation = await this._getPendingReservation(
-      workerSid,
-      'pending',
-    );
+    const pendingReservation = await this._getPendingReservation(workerSid);
     if (!pendingReservation) {
+      response.say(
+        "We're sorry but the caller has disconnected before you got on the phone.",
+      );
       response.hangup();
       return response.toString();
     }
+    const machineAnswerBys = [
+      'machine_end_beep',
+      'machine_end_silence',
+      'machine_end_other',
+      'fax',
+      'machine_start',
+    ];
+    const { taskSid } = pendingReservation;
+
     if (event.AnsweredBy === 'human') {
-      logger.info('Human detected');
+      return this._acceptReservationAndbridgeAgent(
+        pendingReservation,
+        workerSid,
+      );
+    }
+    if (machineAnswerBys.includes(event.AnsweredBy)) {
       this._updateReservationStatus(
         workerSid,
         pendingReservation.sid,
-        'accepted',
+        'rejected',
       );
+      response.say('Machine detected, goodbye');
+      response.hangup();
+      return response.toString();
+    }
 
-      const { taskSid } = pendingReservation;
-      const task = await this._fetchTask(taskSid);
-      const callerCallSid = JSON.parse(task.attributes).call_sid;
-      const agentCallSid = event.CallSid;
+    // either unknown dection, or AMD is disabled, either way same thing
+    const task = await this._fetchTask(taskSid);
+    const attributes = JSON.parse(task.attributes);
+    const gather = response.gather({
+      action: `https://${config.hostName}/api/agent-gather`,
+      method: 'POST',
+      numDigits: 1,
+      actionOnEmptyResult: true,
+    });
+    gather.say(
+      `You are receiving a ${attributes.selected_language} call from Mutual Aid en why see, press any key to accept`,
+    );
+    response.say("We didn't receive any input. Goodbye!");
+    response.hangup();
+    return response.toString();
+  }
 
-      response.dial().conference({ endConferenceOnExit: true }, callerCallSid);
-      this._updateCall(callerCallSid, { twiml: response.toString() });
-      this._updateCall(agentCallSid, {
-        twiml: response.toString(),
+  async _acceptReservationAndbridgeAgent(reservationObj, workerSid) {
+    const response = new VoiceResponse();
+
+    this._updateReservationStatus(workerSid, reservationObj.sid, 'accepted');
+    const task = await this._fetchTask(reservationObj.taskSid);
+    const attributes = JSON.parse(task.attributes);
+    const callerCallSid = attributes.call_sid;
+    const conferenceRoomName = reservationObj.taskSid;
+
+    response.dial().conference(
+      {
+        endConferenceOnExit: true,
         statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
         statusCallbackMethod: 'POST',
-      });
-      return '<Response><Pause length="5"/></Response>';
-    }
-    logger.info('AnsweredBy: %s', event.AnsweredBy);
-    this._updateReservationStatus(
-      workerSid,
-      pendingReservation.sid,
-      'rejected',
+        statusCallbackEvent: 'end',
+      },
+      conferenceRoomName,
     );
+    const twiml = response.toString();
+    this._updateCall(callerCallSid, { twiml });
+    return twiml;
+  }
 
-    return response.hangup().toString();
+  async handleAgentGather(event) {
+    const response = new VoiceResponse();
+    const workerSid = this.workers[event.Called].sid;
+    const pendingReservation = await this._getPendingReservation(workerSid);
+
+    if (!pendingReservation) {
+      response.say("We're sorry but the caller has disconnected.");
+      response.hangup();
+      return response.toString();
+    }
+
+    if (event.Digits.length === 0) {
+      // no digits detected
+      this._updateReservationStatus(
+        workerSid,
+        pendingReservation.sid,
+        'rejected',
+      );
+      response.say('No key presses were detected, goodbye');
+      response.hangup();
+      return response.toString();
+    }
+
+    return this._acceptReservationAndbridgeAgent(pendingReservation, workerSid);
   }
 
   async handleCallAssignment(event) {
@@ -187,14 +236,16 @@ class TwilioTaskRouter {
     const { client } = this;
     const callerId = taskAttributes.called;
     const workerContactNumber = workerAttributes.contact_uri;
-
+    const options = {
+      to: workerContactNumber,
+      from: callerId,
+      url: `https://${config.hostName}/api/agent-connected`,
+    };
+    if (config.twilio.isAmdEnabled) {
+      options.machineDetection = 'Enable';
+    }
     try {
-      await client.calls.create({
-        to: workerContactNumber,
-        from: callerId,
-        machineDetection: 'Enable',
-        url: `https://${config.hostName}/api/agent-connected`,
-      });
+      await client.calls.create(options);
     } catch (error) {
       logger.error(error);
     }
@@ -248,22 +299,11 @@ class TwilioTaskRouter {
     return response.toString();
   }
 
-  async handleWorkerBridgeDisconnect(event) {
-    const workerSid = this.workers[event.Called].sid;
-
-    const reservations = await this._getWorkersReservations(workerSid, {
-      reservationStatus: 'accepted',
-    });
-
-    if (reservations.length > 0) {
-      const reservation = findMostRecentlyUpdatedReservation(reservations);
-      const status = 'completed';
-      const reason =
-        'Call with agent ended after one or the other party hung up';
-      await this._updateTask(reservation.taskSid, status, reason);
-    } else {
-      logger.error('No task found!');
-    }
+  handleWorkerBridgeDisconnect(event) {
+    const taskSid = event.FriendlyName; // the conferences are using tasks as the room number
+    const status = 'completed';
+    const reason = event.Reason;
+    this._updateTask(taskSid, status, reason);
   }
 
   async sendToVm(event) {

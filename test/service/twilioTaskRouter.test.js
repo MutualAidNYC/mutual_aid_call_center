@@ -140,23 +140,44 @@ describe('TwilioTaskRouter class', () => {
       createStub.restore();
       sendToVmStub.restore();
     });
-    it('Makes an outbound call to the assigned agent if NOT vm', async () => {
-      const event = {
-        TaskAttributes:
-          '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
-        WorkerAttributes:
-          '{"languages":["English"],"contact_uri":"+16667778888"}',
-        WorkerSid: 'someSID',
-      };
-      createStub.resolves(null);
-      await taskRouter.handleCallAssignment(event);
-      expect(createStub.firstCall.firstArg).to.eql({
-        to: '+16667778888',
-        from: '+12223334444',
-        machineDetection: 'Enable',
-        url: `https://${config.hostName}/api/agent-connected`,
+    describe('Makes an outbound call to the assigned agent if NOT vm', () => {
+      it('Enables AMD when isAmdEnabled is true ', async () => {
+        config.twilio.isAmdEnabled = true;
+        const event = {
+          TaskAttributes:
+            '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
+          WorkerAttributes:
+            '{"languages":["English"],"contact_uri":"+16667778888"}',
+          WorkerSid: 'someSID',
+        };
+        createStub.resolves(null);
+        await taskRouter.handleCallAssignment(event);
+        expect(createStub.firstCall.firstArg).to.eql({
+          to: '+16667778888',
+          from: '+12223334444',
+          machineDetection: 'Enable',
+          url: `https://${config.hostName}/api/agent-connected`,
+        });
+        expect(sendToVmStub.notCalled).to.be.equal(true);
       });
-      expect(sendToVmStub.notCalled).to.be.equal(true);
+      it('Disables AMD when isAmdEnabled is false ', async () => {
+        config.twilio.isAmdEnabled = false;
+        const event = {
+          TaskAttributes:
+            '{"from_country":"US","called":"+12223334444","selected_language":"German","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
+          WorkerAttributes:
+            '{"languages":["English"],"contact_uri":"+16667778888"}',
+          WorkerSid: 'someSID',
+        };
+        createStub.resolves(null);
+        await taskRouter.handleCallAssignment(event);
+        expect(createStub.firstCall.firstArg).to.eql({
+          to: '+16667778888',
+          from: '+12223334444',
+          url: `https://${config.hostName}/api/agent-connected`,
+        });
+        expect(sendToVmStub.notCalled).to.be.equal(true);
+      });
     });
     it('Invoke sendToVM if assigned to VM worker', async () => {
       const event = {
@@ -221,81 +242,301 @@ describe('TwilioTaskRouter class', () => {
         attributes:
           '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
       };
-      const twiml =
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference endConferenceOnExit="true">CAbaloney2</Conference></Dial></Response>';
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference endConferenceOnExit="true" statusCallback="https://${config.hostName}/api/worker-bridge-disconnect" statusCallbackMethod="POST" statusCallbackEvent="end">${reservations[0].taskSid}</Conference></Dial></Response>`;
 
       getWorkersReservationsStub.resolves(reservations);
       fetchTaskStub.resolves(task);
 
-      expect(await taskRouter.handleAgentConnected(event)).to.equal(
-        '<Response><Pause length="5"/></Response>',
-      );
-      /* eslint-disable no-unused-expressions */
+      expect(await taskRouter.handleAgentConnected(event)).to.equal(twiml);
       expect(
         getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
           reservationStatus: 'pending',
         }),
-      ).to.be.true;
+      ).to.equal(true);
       expect(
         updateReservationStatusStub.calledOnceWith(
           'WKbaloney2',
           reservations[0].sid,
           'accepted',
         ),
-      ).to.be.true;
-      expect(fetchTaskStub.calledOnceWith(reservations[0].taskSid)).to.be.true;
-      expect(updateCallStub.calledWith('CAbaloney2', { twiml })).to.be.true;
-      expect(
-        updateCallStub.calledWith(event.CallSid, {
-          twiml,
-          statusCallback: `https://${config.hostName}/api/worker-bridge-disconnect`,
-          statusCallbackMethod: 'POST',
-        }),
-      ).to.be.true;
-      /* eslint-enable no-unused-expressions */
-    });
-    it('Handles answer by non-human', async () => {
-      const event = {
-        Called: '+15556667777',
-        AnsweredBy: 'machine',
-        CallSid: 'CAbaloney',
-      };
-      const reservations = [
-        {
-          sid: 'WRbaloney',
-          taskSid: 'WTbaloney',
-        },
-      ];
-
-      const task = {
-        attributes:
-          '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
-      };
-
-      getWorkersReservationsStub.resolves(reservations);
-      fetchTaskStub.resolves(task);
-
-      expect(await taskRouter.handleAgentConnected(event)).to.equal(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>',
+      ).to.equal(true);
+      expect(fetchTaskStub.calledOnceWith(reservations[0].taskSid)).to.equal(
+        true,
       );
-      /* eslint-disable no-unused-expressions */
-      expect(
-        getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
-          reservationStatus: 'pending',
-        }),
-      ).to.be.true;
-      expect(
-        updateReservationStatusStub.calledOnceWith(
-          'WKbaloney2',
-          reservations[0].sid,
-          'rejected',
-        ),
-      ).to.be.true;
-      expect(fetchTaskStub.notCalled).to.be.true;
-      expect(updateCallStub.notCalled).to.be.true;
-      expect(updateCallStub.notCalled).to.be.true;
-      /* eslint-enable no-unused-expressions */
+      expect(updateCallStub.calledWith('CAbaloney2', { twiml })).to.equal(true);
     });
+    describe('Handles answer by non-human', () => {
+      it('handles "machine_end_beep', async () => {
+        const event = {
+          Called: '+15556667777',
+          AnsweredBy: 'machine_end_beep',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Machine detected, goodbye</Say><Hangup/></Response>',
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(
+          updateReservationStatusStub.calledOnceWith(
+            'WKbaloney2',
+            reservations[0].sid,
+            'rejected',
+          ),
+        ).to.equal(true);
+        expect(fetchTaskStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+      it('handles "machine_end_silence', async () => {
+        const event = {
+          Called: '+15556667777',
+          AnsweredBy: 'machine_end_silence',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Machine detected, goodbye</Say><Hangup/></Response>',
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(
+          updateReservationStatusStub.calledOnceWith(
+            'WKbaloney2',
+            reservations[0].sid,
+            'rejected',
+          ),
+        ).to.equal(true);
+        expect(fetchTaskStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+      it('handles "machine_end_other', async () => {
+        const event = {
+          Called: '+15556667777',
+          AnsweredBy: 'machine_end_other',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Machine detected, goodbye</Say><Hangup/></Response>',
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(
+          updateReservationStatusStub.calledOnceWith(
+            'WKbaloney2',
+            reservations[0].sid,
+            'rejected',
+          ),
+        ).to.equal(true);
+        expect(fetchTaskStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+      it('handles "fax', async () => {
+        const event = {
+          Called: '+15556667777',
+          AnsweredBy: 'fax',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Machine detected, goodbye</Say><Hangup/></Response>',
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(
+          updateReservationStatusStub.calledOnceWith(
+            'WKbaloney2',
+            reservations[0].sid,
+            'rejected',
+          ),
+        ).to.equal(true);
+        expect(fetchTaskStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+      it('handles "machine_start', async () => {
+        const event = {
+          Called: '+15556667777',
+          AnsweredBy: 'machine_start',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Machine detected, goodbye</Say><Hangup/></Response>',
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(
+          updateReservationStatusStub.calledOnceWith(
+            'WKbaloney2',
+            reservations[0].sid,
+            'rejected',
+          ),
+        ).to.equal(true);
+        expect(fetchTaskStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+    });
+    describe('Handles unknown or no AMD enabled', () => {
+      it('handles "unknown', async () => {
+        const event = {
+          Called: '+15556667777',
+          AnsweredBy: 'unknown',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"German","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(fetchTaskStub.calledOnceWith(reservations[0].taskSid)).to.equal(
+          true,
+        );
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+      it('handles AMD not used', async () => {
+        const event = {
+          Called: '+15556667777',
+          CallSid: 'CAbaloney',
+        };
+        const reservations = [
+          {
+            sid: 'WRbaloney',
+            taskSid: 'WTbaloney',
+          },
+        ];
+
+        const task = {
+          attributes:
+            '{"from_country":"US","called":"+11112223333","selected_language":"German","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney2","account_sid":"ACbaloney","from_zip":"10601","from":"+14445556666","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+17778889999","caller_city":"WHITE PLAINS","to":"+10001112222"}',
+        };
+
+        getWorkersReservationsStub.resolves(reservations);
+        fetchTaskStub.resolves(task);
+
+        expect(await taskRouter.handleAgentConnected(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
+        );
+        expect(
+          getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
+            reservationStatus: 'pending',
+          }),
+        ).to.equal(true);
+        expect(fetchTaskStub.calledOnceWith(reservations[0].taskSid)).to.equal(
+          true,
+        );
+        expect(updateCallStub.notCalled).to.equal(true);
+      });
+    });
+
     it('Handles answer but caller disconnected', async () => {
       const event = {
         Called: '+15556667777',
@@ -313,19 +554,119 @@ describe('TwilioTaskRouter class', () => {
       fetchTaskStub.resolves(task);
 
       expect(await taskRouter.handleAgentConnected(event)).to.equal(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>',
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We\'re sorry but the caller has disconnected before you got on the phone.</Say><Hangup/></Response>',
       );
-      /* eslint-disable no-unused-expressions */
       expect(
         getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
           reservationStatus: 'pending',
         }),
-      ).to.be.true;
-      expect(updateReservationStatusStub.notCalled).to.be.true;
-      expect(fetchTaskStub.notCalled).to.be.true;
-      expect(updateCallStub.notCalled).to.be.true;
-      expect(updateCallStub.notCalled).to.be.true;
-      /* eslint-enable no-unused-expressions */
+      ).to.equal(true);
+      expect(updateReservationStatusStub.notCalled).to.equal(true);
+      expect(fetchTaskStub.notCalled).to.equal(true);
+      expect(updateCallStub.notCalled).to.equal(true);
+      expect(updateCallStub.notCalled).to.equal(true);
+    });
+  });
+
+  describe('handelAgentGather', () => {
+    let getPendingReservationStub;
+    let acceptReservationAndbridgeAgentStub;
+    let updateReservationStatusStub;
+    beforeEach(() => {
+      getPendingReservationStub = sinon.stub(
+        taskRouter,
+        '_getPendingReservation',
+      );
+      acceptReservationAndbridgeAgentStub = sinon.stub(
+        taskRouter,
+        '_acceptReservationAndbridgeAgent',
+      );
+      updateReservationStatusStub = sinon.stub(
+        taskRouter,
+        '_updateReservationStatus',
+      );
+      taskRouter.workers = workersObj;
+    });
+    afterEach(() => {
+      getPendingReservationStub.restore();
+      acceptReservationAndbridgeAgentStub.restore();
+      updateReservationStatusStub.restore();
+    });
+    describe('When a DTMF tone is detected', () => {
+      const event = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+12223334444',
+        Digits: '2',
+        FinishedOnKey: '',
+      };
+      const event2 = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+12223334444',
+        Digits: '',
+        FinishedOnKey: '',
+      };
+      it('Bridges if the caller is still on the line', async () => {
+        const reservation = {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        };
+        getPendingReservationStub.resolves(reservation);
+        acceptReservationAndbridgeAgentStub.resolves('some twiml');
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          'some twiml',
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.firstCall.firstArg).to.equal(
+          reservation,
+        );
+        expect(acceptReservationAndbridgeAgentStub.firstCall.lastArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(updateReservationStatusStub.notCalled).to.equal(true);
+      });
+      it('Plays a message if the caller has disconnected', async () => {
+        getPendingReservationStub.resolves(undefined);
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Say>We're sorry but the caller has disconnected.</Say><Hangup/></Response>`,
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+        expect(updateReservationStatusStub.notCalled).to.equal(true);
+      });
+      describe('When no DTMF tones are detected', () => {
+        it('Rejects the reservation plays a message and hangs up', async () => {
+          const reservation = {
+            sid: 'WRbalone34',
+            taskSid: 'WTbaloneyc4f',
+          };
+          getPendingReservationStub.resolves(reservation);
+
+          expect(await taskRouter.handleAgentGather(event2)).to.equal(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Say>No key presses were detected, goodbye</Say><Hangup/></Response>`,
+          );
+          expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+            workersObj[event2.Called].sid,
+          );
+          expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+          expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
+            workersObj[event2.Called].sid,
+          );
+          expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
+            'WRbalone34',
+          );
+          expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
+            'rejected',
+          );
+        });
+      });
     });
   });
 
@@ -376,39 +717,28 @@ describe('TwilioTaskRouter class', () => {
   });
 
   describe('handleWorkerBridgeDisconnect', () => {
-    let getWorkerReservationsStub;
+    const event = {
+      FriendlyName: 'WTxxxxxxxxxxxxxxxxxxxxxxxx',
+      CallSidEndingConference: 'CAxxxxxxxxxx',
+      ConferenceSid: 'CFxxxxxxxxxxxxxxxxxxxxxx',
+      StatusCallbackEvent: 'conference-end',
+      Reason:
+        'Participant CAxxxxxxxxxxxx with endConferenceOnExit left the conference',
+    };
     let updateTaskStub;
     before(() => {
-      const reservations = [
-        {
-          dateUpdated: '2020-05-13T02:27:48.000Z',
-          taskSid: 'WTtasksid1',
-        },
-        {
-          dateUpdated: '2020-05-13T02:28:48.000Z',
-          taskSid: 'WTtasksid2',
-        },
-        {
-          dateUpdated: '2020-05-13T02:30:48.000Z',
-          taskSid: 'WTtasksid3',
-        },
-      ];
-      getWorkerReservationsStub = sinon.stub(
-        taskRouter,
-        '_getWorkersReservations',
-      );
       updateTaskStub = sinon.stub(taskRouter, '_updateTask');
-      getWorkerReservationsStub.returns(reservations);
       updateTaskStub.resolves();
     });
     after(() => {
-      getWorkerReservationsStub.restore();
       updateTaskStub.restore();
     });
-    it('Marks the task as complete', async () => {
+    it('Marks the task as complete', () => {
       taskRouter.workers = workersObj;
-      await taskRouter.handleWorkerBridgeDisconnect({ Called: '+15556667777' });
-      expect(updateTaskStub.firstCall.firstArg).to.be.equal('WTtasksid3');
+      taskRouter.handleWorkerBridgeDisconnect(event);
+      expect(updateTaskStub.firstCall.args[0]).to.be.equal(event.FriendlyName);
+      expect(updateTaskStub.firstCall.args[1]).to.be.equal('completed');
+      expect(updateTaskStub.firstCall.args[2]).to.be.equal(event.Reason);
     });
   });
 
@@ -707,7 +1037,7 @@ describe('TwilioTaskRouter class', () => {
       expect(await taskRouter._fetchTask(taskSid)).to.equal(task);
       expect(tasksStub.firstCall.firstArg).to.equal(taskSid);
       // eslint-disable-next-line no-unused-expressions
-      expect(fetchStub.calledOnceWithExactly()).to.be.true;
+      expect(fetchStub.calledOnceWithExactly()).to.equal(true);
     });
   });
 
