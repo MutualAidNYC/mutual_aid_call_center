@@ -13,7 +13,7 @@ the serverless dev environment. Lastly test will contain the tests for both
 halves.
 
 - Readme for the [NodeJS Server](#NodeJS-Server)
-- Readme for the [serverless runtime](#Twilio0-Serverless-Function-Runtime)
+- Readme for the [serverless runtime](#twilio-serverless-function-runtime)
 
 ## NodeJS Server
 
