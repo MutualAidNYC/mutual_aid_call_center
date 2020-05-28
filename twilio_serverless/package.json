@@ -1,0 +1,23 @@
+{
+  "name": "mutual-aid-call-center",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "twilio-run --env",
+    "deploy": "twilio-run deploy --override-existing-project",
+    "deploy-force": "twilio-run deploy --override-existing-project",
+    "deploy-prod": "twilio-run deploy --environment=production --override-existing-project"
+  },
+  "devDependencies": {
+    "twilio-run": "2.* || >2.0.0-rc"
+  },
+  "engines": {
+    "node": "10.17.0"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "moment-range": "^4.0.2",
+    "moment-timezone": "^0.5.28"
+  }
+}
