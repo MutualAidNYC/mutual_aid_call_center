@@ -1,0 +1,34 @@
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - run: npm install
+      - run: npm run build --if-present
+      - run: npm test
+        env:
+          CI: true
+          AIRTABLE_DELAY: 900000
+          PHONE_BASE: appxxxxxxxxxxx
+          PORT: 8080
+          ACCOUNT_SID: ACxxxxxxxxxxxxxxxxx
+          AUTH_TOKEN: xxxxxxxxxxxxxxxxxxxx
+          WORKSPACE_SID: WSxxxxxxxxxxxxxxxx
+          AIRTABLE_API_KEY: keyxxxxxxxxxxxxxxx
+          HOST_NAME: github.com
+          TWILIO_TASKROUTER_VM_SID: REPLACE_ME
