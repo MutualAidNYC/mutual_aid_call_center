@@ -168,11 +168,16 @@ class TwilioTaskRouter {
       numDigits: 1,
       actionOnEmptyResult: true,
     });
-    gather.say(
-      `You are receiving a ${attributes.selected_language} call from Mutual Aid en why see, press any key to accept`,
+    gather.play(
+      `https://${
+        config.hostName
+      }/assets/receiving_call_in_${attributes.selected_language.toLowerCase()}.mp3`,
     );
-    response.say("We didn't receive any input. Goodbye!");
-    response.hangup();
+    // gather.say(
+    //   `You are receiving a ${attributes.selected_language} call from Mutual Aid en why see, press any key to accept`,
+    // );
+    // response.say("We didn't receive any input. Goodbye!");
+    // response.hangup();
     return response.toString();
   }
 
