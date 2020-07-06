@@ -490,7 +490,7 @@ describe('TwilioTaskRouter class', () => {
         fetchTaskStub.resolves(task);
 
         expect(await taskRouter.handleAgentConnected(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Play>https://${config.hostName}/assets/receiving_call_in_german.mp3</Play></Gather></Response>`,
         );
         expect(
           getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
@@ -523,7 +523,7 @@ describe('TwilioTaskRouter class', () => {
         fetchTaskStub.resolves(task);
 
         expect(await taskRouter.handleAgentConnected(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Say>You are receiving a German call from Mutual Aid en why see, press any key to accept</Say></Gather><Say>We didn't receive any input. Goodbye!</Say><Hangup/></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Play>https://${config.hostName}/assets/receiving_call_in_german.mp3</Play></Gather></Response>`,
         );
         expect(
           getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
