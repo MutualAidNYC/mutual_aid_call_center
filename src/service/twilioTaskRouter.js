@@ -173,11 +173,6 @@ class TwilioTaskRouter {
         config.hostName
       }/assets/receiving_call_in_${attributes.selected_language.toLowerCase()}.mp3`,
     );
-    // gather.say(
-    //   `You are receiving a ${attributes.selected_language} call from Mutual Aid en why see, press any key to accept`,
-    // );
-    // response.say("We didn't receive any input. Goodbye!");
-    // response.hangup();
     return response.toString();
   }
 
@@ -208,26 +203,46 @@ class TwilioTaskRouter {
     const response = new VoiceResponse();
     const workerSid = this.workers[event.Called].sid;
     const pendingReservation = await this._getPendingReservation(workerSid);
-
-    if (!pendingReservation) {
-      response.say("We're sorry but the caller has disconnected.");
-      response.hangup();
-      return response.toString();
-    }
-
-    if (event.Digits.length === 0) {
-      // no digits detected
+    const rejectReservation = () =>
       this._updateReservationStatus(
         workerSid,
         pendingReservation.sid,
         'rejected',
       );
-      response.say('No key presses were detected, goodbye');
-      response.hangup();
-      return response.toString();
+    if (event.Digits === '1') {
+      if (!pendingReservation) {
+        response.play(
+          `https://${config.hostName}/assets/caller_disconnected.mp3`,
+        );
+        response.hangup();
+        return response.toString();
+      }
+      return this._acceptReservationAndbridgeAgent(
+        pendingReservation,
+        workerSid,
+      );
     }
-
-    return this._acceptReservationAndbridgeAgent(pendingReservation, workerSid);
+    if (event.Digits.length === 0) {
+      // no digits detected
+      rejectReservation();
+      if (event.CallStatus === 'in-progress') {
+        // if call is 'completed', no need to play a message
+        response.play(`https://${config.hostName}/assets/no_response.mp3`);
+      }
+      response.hangup();
+    } else if (event.Digits === '9') {
+      // no digits detected
+      rejectReservation();
+      response.play(
+        `https://${config.hostName}/assets/send_call_to_next_volunteer.mp3`,
+      );
+      response.hangup();
+    } else {
+      // invalid entry
+      response.play(`https://${config.hostName}/assets/invalid_entry.mp3`);
+      response.redirect(`https://${config.hostName}/api/agent-connected`);
+    }
+    return response.toString();
   }
 
   async handleCallAssignment(event) {
