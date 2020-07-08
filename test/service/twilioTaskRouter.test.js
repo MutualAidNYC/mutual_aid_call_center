@@ -592,19 +592,12 @@ describe('TwilioTaskRouter class', () => {
       acceptReservationAndbridgeAgentStub.restore();
       updateReservationStatusStub.restore();
     });
-    describe('When a DTMF tone is detected', () => {
+    describe('When a DTMF tone "1" is detected', () => {
       const event = {
         CallSid: 'CAxxxxxxxxxxxxxxxxxx',
         CallStatus: 'in-progress',
         Called: '+12223334444',
-        Digits: '2',
-        FinishedOnKey: '',
-      };
-      const event2 = {
-        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
-        CallStatus: 'in-progress',
-        Called: '+12223334444',
-        Digits: '',
+        Digits: '1',
         FinishedOnKey: '',
       };
       it('Bridges if the caller is still on the line', async () => {
@@ -629,11 +622,11 @@ describe('TwilioTaskRouter class', () => {
         );
         expect(updateReservationStatusStub.notCalled).to.equal(true);
       });
-      it('Plays a message if the caller has disconnected', async () => {
+      it('Plays a message if the caller has disconnected and hangs up', async () => {
         getPendingReservationStub.resolves(undefined);
 
         expect(await taskRouter.handleAgentGather(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Say>We're sorry but the caller has disconnected.</Say><Hangup/></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://${config.hostName}/assets/caller_disconnected.mp3</Play><Hangup/></Response>`,
         );
         expect(getPendingReservationStub.firstCall.firstArg).to.equal(
           workersObj[event.Called].sid,
@@ -641,31 +634,129 @@ describe('TwilioTaskRouter class', () => {
         expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
         expect(updateReservationStatusStub.notCalled).to.equal(true);
       });
-      describe('When no DTMF tones are detected', () => {
-        it('Rejects the reservation plays a message and hangs up', async () => {
-          const reservation = {
-            sid: 'WRbalone34',
-            taskSid: 'WTbaloneyc4f',
-          };
-          getPendingReservationStub.resolves(reservation);
+    });
+    describe('When no DTMF tones are detected', () => {
+      const event = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+12223334444',
+        Digits: '',
+        FinishedOnKey: '',
+      };
+      it('Rejects the reservation plays a message and hangs up', async () => {
+        const reservation = {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        };
+        getPendingReservationStub.resolves(reservation);
 
-          expect(await taskRouter.handleAgentGather(event2)).to.equal(
-            `<?xml version="1.0" encoding="UTF-8"?><Response><Say>No key presses were detected, goodbye</Say><Hangup/></Response>`,
-          );
-          expect(getPendingReservationStub.firstCall.firstArg).to.equal(
-            workersObj[event2.Called].sid,
-          );
-          expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
-          expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
-            workersObj[event2.Called].sid,
-          );
-          expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
-            'WRbalone34',
-          );
-          expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
-            'rejected',
-          );
-        });
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://${config.hostName}/assets/no_response.mp3</Play><Hangup/></Response>`,
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+        expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
+          'WRbalone34',
+        );
+        expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
+          'rejected',
+        );
+      });
+    });
+    describe('When a DTMF "9" is detected', () => {
+      const event = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+12223334444',
+        Digits: '9',
+        FinishedOnKey: '',
+      };
+      it('Rejects the reservation plays a message and hangs up', async () => {
+        const reservation = {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        };
+        getPendingReservationStub.resolves(reservation);
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://${config.hostName}/assets/send_call_to_next_volunteer.mp3</Play><Hangup/></Response>`,
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+        expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
+          'WRbalone34',
+        );
+        expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
+          'rejected',
+        );
+      });
+    });
+    describe('When a DTMF other than "1" or "9" is detected', () => {
+      const event = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'in-progress',
+        Called: '+12223334444',
+        Digits: '6',
+        FinishedOnKey: '',
+      };
+      it('Plays a message indicating invalid entry and re-prompt', async () => {
+        const reservation = {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        };
+        getPendingReservationStub.resolves(reservation);
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://${config.hostName}/assets/invalid_entry.mp3</Play><Redirect>https://${config.hostName}/api/agent-connected</Redirect></Response>`,
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+        expect(updateReservationStatusStub.notCalled).to.equal(true);
+      });
+    });
+    describe('When agent disconnects', () => {
+      const event = {
+        CallSid: 'CAxxxxxxxxxxxxxxxxxx',
+        CallStatus: 'completed',
+        Called: '+12223334444',
+        Digits: '',
+        FinishedOnKey: '',
+      };
+      it('it rejects the call', async () => {
+        const reservation = {
+          sid: 'WRbalone34',
+          taskSid: 'WTbaloneyc4f',
+        };
+        getPendingReservationStub.resolves(reservation);
+
+        expect(await taskRouter.handleAgentGather(event)).to.equal(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`,
+        );
+        expect(getPendingReservationStub.firstCall.firstArg).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(acceptReservationAndbridgeAgentStub.notCalled).to.equal(true);
+        expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
+          workersObj[event.Called].sid,
+        );
+        expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
+          'WRbalone34',
+        );
+        expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
+          'rejected',
+        );
       });
     });
   });
