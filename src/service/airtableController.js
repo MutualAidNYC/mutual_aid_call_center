@@ -122,8 +122,10 @@ class AirtableController {
     return pageProcessor.bind(this);
   }
 
-  async fetchAllRecordsFromTable(table, base) {
-    const urlifiedTableName = table.replace(' ', '%20');
+  async fetchAllRecordsFromTable(table, base, view = 'Grid view') {
+    const urlify = (phrase) => phrase.replace(' ', '%20');
+    const urlifiedTableName = urlify(table);
+    const urlifiedView = urlify(view);
     let count = 0;
     const maxTries = 2000;
     // eslint-disable-next-line no-constant-condition
@@ -138,7 +140,7 @@ class AirtableController {
               Authorization: `Bearer ${config.airtable.apiKey}`,
             },
             method: 'get',
-            url: `https://api.airtable.com/v0/${base}/${urlifiedTableName}?view=Grid%20view`,
+            url: `https://api.airtable.com/v0/${base}/${urlifiedTableName}?view=${urlifiedView}`,
             data: {
               view: 'Grid%20view',
             },

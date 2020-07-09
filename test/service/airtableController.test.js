@@ -292,9 +292,10 @@ describe('airtableController', () => {
     ];
     let axiosStub;
     let clock;
+    const view = 'a view';
     const axiosConfig1 = {
       method: 'get',
-      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=Grid%20view`,
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=a%20view`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
@@ -304,7 +305,7 @@ describe('airtableController', () => {
     };
     const axiosConfig2 = {
       method: 'get',
-      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=Grid%20view`,
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=a%20view`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
@@ -328,6 +329,7 @@ describe('airtableController', () => {
         await airtableController.fetchAllRecordsFromTable(
           table,
           config.airtable.phoneBase,
+          view,
         ),
       ).to.eql(fullList);
       expect(axiosStub.firstCall.firstArg).to.eql(axiosConfig1);
@@ -342,6 +344,7 @@ describe('airtableController', () => {
       airtableController.fetchAllRecordsFromTable(
         table,
         config.airtable.phoneBase,
+        view,
       );
       clock.tick(200);
       await clock.tickAsync(49);
@@ -353,6 +356,7 @@ describe('airtableController', () => {
       airtableController.fetchAllRecordsFromTable(
         table,
         config.airtable.phoneBase,
+        view,
       );
       clock.tick(29500);
       await clock.tickAsync(499);
