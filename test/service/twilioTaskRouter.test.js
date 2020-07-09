@@ -936,11 +936,10 @@ describe('TwilioTaskRouter class', () => {
       it('When VM is disabled, Plays a message then hangs up', async () => {
         config.twilio.isVmEnabled = false;
         const updateObj = {
-          twiml:
-            '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon</Say><Hangup/></Response>',
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://${config.hostName}/assets/no_volunteers_available_in_spanish.mp3</Play><Hangup/></Response>`,
         };
         expect(
-          await taskRouter.sendToVmOrPlayMessageAndDisconnect(englishEvent),
+          await taskRouter.sendToVmOrPlayMessageAndDisconnect(spanishEvent),
         ).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
           englishEvent.WorkerSid,

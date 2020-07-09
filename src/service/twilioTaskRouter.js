@@ -330,7 +330,8 @@ class TwilioTaskRouter {
     const response = new twilio.twiml.VoiceResponse();
     const { isVmEnabled, isEnglishVmTranscriptionEnabled } = config.twilio;
     const taskAttributes = JSON.parse(event.TaskAttributes);
-    const isEnglish = taskAttributes.selected_language === 'English';
+    const language = taskAttributes.selected_language;
+    const isEnglish = language === 'English';
     await this._updateReservationStatus(
       event.WorkerSid,
       event.ReservationSid,
@@ -374,8 +375,10 @@ class TwilioTaskRouter {
         response.say('I did not receive a recording');
       }
     } else {
-      response.say(
-        'We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon',
+      response.play(
+        `https://${
+          config.hostName
+        }/assets/no_volunteers_available_in_${language.toLowerCase()}.mp3`,
       );
       response.hangup();
       this._updateTask(event.TaskSid, 'completed', 'TaskRouter queue time out');
