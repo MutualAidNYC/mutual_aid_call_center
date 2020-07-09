@@ -247,7 +247,7 @@ class TwilioTaskRouter {
 
   async handleCallAssignment(event) {
     if (event.WorkerSid === config.twilio.vmWorkerSid) {
-      this.sendToVm(event);
+      this.sendToVmOrPlayMessageAndDisconnect(event);
       return;
     }
     const workerAttributes = JSON.parse(event.WorkerAttributes);
@@ -326,60 +326,65 @@ class TwilioTaskRouter {
     this._updateTask(taskSid, status, reason);
   }
 
-  async sendToVm(event) {
+  async sendToVmOrPlayMessageAndDisconnect(event) {
     const response = new twilio.twiml.VoiceResponse();
     const { isVmEnabled, isEnglishVmTranscriptionEnabled } = config.twilio;
-    const isEnglish =
-      JSON.parse(event.TaskAttributes).selected_language === 'English';
+    const taskAttributes = JSON.parse(event.TaskAttributes);
+    const language = taskAttributes.selected_language;
+    const isEnglish = language === 'English';
     await this._updateReservationStatus(
       event.WorkerSid,
       event.ReservationSid,
       'accepted',
     );
-    if (isVmEnabled && isEnglishVmTranscriptionEnabled && isEnglish) {
-      response.say(
-        'Please leave a message at the beep.\nPress the star key when finished.',
-      );
-      response.record({
-        action: `https://${config.hostName}/api/vm-recording-ended`,
-        method: 'POST',
-        maxLength: 20,
-        finishOnKey: '*',
-        transcribe: true,
-        transcribeCallback: `https://${config.hostName}/api/new-transcription`,
-      });
-      response.say('I did not receive a recording');
-    } else if (isVmEnabled && isEnglishVmTranscriptionEnabled && !isEnglish) {
-      response.say(
-        'Please leave a message at the beep.\nPress the star key when finished.',
-      );
-      response.record({
-        action: `https://${config.hostName}/api/vm-recording-ended`,
-        method: 'POST',
-        maxLength: 20,
-        finishOnKey: '*',
-      });
-      response.say('I did not receive a recording');
-    } else if (isVmEnabled && !isEnglishVmTranscriptionEnabled) {
-      response.say(
-        'Please leave a message at the beep.\nPress the star key when finished.',
-      );
-      response.record({
-        action: `https://${config.hostName}/api/vm-recording-ended`,
-        method: 'POST',
-        maxLength: 20,
-        finishOnKey: '*',
-      });
-      response.say('I did not receive a recording');
+    if (isVmEnabled) {
+      if (isEnglishVmTranscriptionEnabled && isEnglish) {
+        response.say(
+          'Please leave a message at the beep.\nPress the star key when finished.',
+        );
+        response.record({
+          action: `https://${config.hostName}/api/vm-recording-ended`,
+          method: 'POST',
+          maxLength: 20,
+          finishOnKey: '*',
+          transcribe: true,
+          transcribeCallback: `https://${config.hostName}/api/new-transcription`,
+        });
+        response.say('I did not receive a recording');
+      } else if (isEnglishVmTranscriptionEnabled && !isEnglish) {
+        response.say(
+          'Please leave a message at the beep.\nPress the star key when finished.',
+        );
+        response.record({
+          action: `https://${config.hostName}/api/vm-recording-ended`,
+          method: 'POST',
+          maxLength: 20,
+          finishOnKey: '*',
+        });
+        response.say('I did not receive a recording');
+      } else if (!isEnglishVmTranscriptionEnabled) {
+        response.say(
+          'Please leave a message at the beep.\nPress the star key when finished.',
+        );
+        response.record({
+          action: `https://${config.hostName}/api/vm-recording-ended`,
+          method: 'POST',
+          maxLength: 20,
+          finishOnKey: '*',
+        });
+        response.say('I did not receive a recording');
+      }
     } else {
-      response.say(
-        'We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon',
+      response.play(
+        `https://${
+          config.hostName
+        }/assets/no_volunteers_available_in_${language.toLowerCase()}.mp3`,
       );
       response.hangup();
       this._updateTask(event.TaskSid, 'completed', 'TaskRouter queue time out');
     }
 
-    this._updateCall(JSON.parse(event.TaskAttributes).call_sid, {
+    this._updateCall(taskAttributes.call_sid, {
       twiml: response.toString(),
     });
   }
