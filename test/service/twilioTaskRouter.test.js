@@ -129,16 +129,19 @@ describe('TwilioTaskRouter class', () => {
 
   describe('handleCallAssignment', () => {
     let createStub;
-    let sendToVmStub;
+    let sendToVmOrPlayMessageAndDisconnectStub;
     beforeEach(() => {
       taskRouter.activities = activityObj;
       taskRouter.workers = workersObj;
       createStub = sinon.stub(taskRouter.client.calls, 'create');
-      sendToVmStub = sinon.stub(taskRouter, 'sendToVm');
+      sendToVmOrPlayMessageAndDisconnectStub = sinon.stub(
+        taskRouter,
+        'sendToVmOrPlayMessageAndDisconnect',
+      );
     });
     afterEach(() => {
       createStub.restore();
-      sendToVmStub.restore();
+      sendToVmOrPlayMessageAndDisconnectStub.restore();
     });
     describe('Makes an outbound call to the assigned agent if NOT vm', () => {
       it('Enables AMD when isAmdEnabled is true ', async () => {
@@ -158,7 +161,9 @@ describe('TwilioTaskRouter class', () => {
           machineDetection: 'Enable',
           url: `https://${config.hostName}/api/agent-connected`,
         });
-        expect(sendToVmStub.notCalled).to.be.equal(true);
+        expect(sendToVmOrPlayMessageAndDisconnectStub.notCalled).to.be.equal(
+          true,
+        );
       });
       it('Disables AMD when isAmdEnabled is false ', async () => {
         config.twilio.isAmdEnabled = false;
@@ -176,10 +181,12 @@ describe('TwilioTaskRouter class', () => {
           from: '+12223334444',
           url: `https://${config.hostName}/api/agent-connected`,
         });
-        expect(sendToVmStub.notCalled).to.be.equal(true);
+        expect(sendToVmOrPlayMessageAndDisconnectStub.notCalled).to.be.equal(
+          true,
+        );
       });
     });
-    it('Invoke sendToVM if assigned to VM worker', async () => {
+    it('Invoke sendToVMOrPlayMessageAndDisconnect if assigned to VM worker', async () => {
       const event = {
         TaskAttributes:
           '{"from_country":"US","called":"+12223334444","selected_language":"English","to_country":"US","to_city":"BETHPAGE","to_state":"NY","caller_country":"US","call_sid":"CAbaloney","account_sid":"ACbaloney","from_zip":"10601","from":"+15556667777","direction":"inbound","called_zip":"11714","caller_state":"NY","to_zip":"11714","called_country":"US","from_city":"WHITE PLAINS","called_city":"BETHPAGE","caller_zip":"10601","api_version":"2010-04-01","called_state":"NY","from_state":"NY","caller":"+15556667777","caller_city":"WHITE PLAINS","to":"+12223334444"}',
@@ -189,7 +196,9 @@ describe('TwilioTaskRouter class', () => {
       };
       await taskRouter.handleCallAssignment(event);
       expect(createStub.notCalled).to.equal(true);
-      expect(sendToVmStub.firstCall.firstArg).to.be.equal(event);
+      expect(
+        sendToVmOrPlayMessageAndDisconnectStub.firstCall.firstArg,
+      ).to.be.equal(event);
     });
   });
 
@@ -833,7 +842,7 @@ describe('TwilioTaskRouter class', () => {
     });
   });
 
-  describe('sendToVM', () => {
+  describe('sendToVMOrPlayMessageAndDisconnect', () => {
     const callSid = 'CAxxxxxxxxxxxx';
     // const statusCallBack = `https://${config.hostName}/api/vm-recording-ended`;
     const englishEvent = {
@@ -888,7 +897,9 @@ describe('TwilioTaskRouter class', () => {
         };
         config.twilio.isVmEnabled = true;
         config.twilio.isEnglishVmTranscriptionEnabled = true;
-        expect(await taskRouter.sendToVm(englishEvent)).to.equal(undefined);
+        expect(
+          await taskRouter.sendToVmOrPlayMessageAndDisconnect(englishEvent),
+        ).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
           englishEvent.WorkerSid,
         );
@@ -908,7 +919,9 @@ describe('TwilioTaskRouter class', () => {
         };
         config.twilio.isVmEnabled = true;
         config.twilio.isEnglishVmTranscriptionEnabled = true;
-        expect(await taskRouter.sendToVm(spanishEvent)).to.equal(undefined);
+        expect(
+          await taskRouter.sendToVmOrPlayMessageAndDisconnect(spanishEvent),
+        ).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
           spanishEvent.WorkerSid,
         );
@@ -926,7 +939,9 @@ describe('TwilioTaskRouter class', () => {
           twiml:
             '<?xml version="1.0" encoding="UTF-8"?><Response><Say>We are sorry, but all of our volunteers are on the line helping other callers. Please call back soon</Say><Hangup/></Response>',
         };
-        expect(await taskRouter.sendToVm(englishEvent)).to.equal(undefined);
+        expect(
+          await taskRouter.sendToVmOrPlayMessageAndDisconnect(englishEvent),
+        ).to.equal(undefined);
         expect(updateReservationStub.firstCall.firstArg).to.equal(
           englishEvent.WorkerSid,
         );

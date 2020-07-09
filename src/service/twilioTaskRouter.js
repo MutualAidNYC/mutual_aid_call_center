@@ -247,7 +247,7 @@ class TwilioTaskRouter {
 
   async handleCallAssignment(event) {
     if (event.WorkerSid === config.twilio.vmWorkerSid) {
-      this.sendToVm(event);
+      this.sendToVmOrPlayMessageAndDisconnect(event);
       return;
     }
     const workerAttributes = JSON.parse(event.WorkerAttributes);
@@ -326,7 +326,7 @@ class TwilioTaskRouter {
     this._updateTask(taskSid, status, reason);
   }
 
-  async sendToVm(event) {
+  async sendToVmOrPlayMessageAndDisconnect(event) {
     const response = new twilio.twiml.VoiceResponse();
     const { isVmEnabled, isEnglishVmTranscriptionEnabled } = config.twilio;
     const isEnglish =
