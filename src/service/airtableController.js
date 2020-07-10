@@ -95,6 +95,20 @@ class AirtableController {
     return result;
   }
 
+  async updateRecords(baseId, table, records = []) {
+    const base = this.airtable.base(baseId);
+    const baseTable = base(table);
+    let recordsToUpdate = records.slice(0);
+    while (recordsToUpdate.length) {
+      const batch = recordsToUpdate.slice(0, 10);
+      recordsToUpdate = recordsToUpdate.slice(10);
+      /* eslint-disable no-await-in-loop */
+      await baseTable.update(batch);
+      await sleep(250);
+      /* eslint-enable no-await-in-loop */
+    }
+  }
+
   set taskRouter(tr) {
     this.tr = tr;
   }
