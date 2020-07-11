@@ -1310,10 +1310,12 @@ describe('TwilioTaskRouter class', () => {
     let fetchWorkersStub;
     let updateWorkerDetailsStub;
     let deleteWorkerStub;
+    let updateRecordsStub;
     const createStub = sinon.stub();
     const originalWorkSpace = taskRouter.workspace;
-
+    const newWorkerSid = 'WKxxxxxxxxxxxxxxxxxxxxxxx3';
     before(() => {
+      createStub.resolves({ sid: newWorkerSid });
       updateWorkerDetailsStub = sinon.stub(taskRouter, '_updateWorkerDetails');
       deleteWorkerStub = sinon.stub(taskRouter, '_deleteWorker');
       fetchWorkersStub = sinon.stub(taskRouter, '_fetchWorkers');
@@ -1321,13 +1323,15 @@ describe('TwilioTaskRouter class', () => {
         airtableController,
         'fetchAllRecordsFromTable',
       );
+      updateRecordsStub = sinon.stub(airtableController, 'updateRecords');
       fetchRecordsStub.returns([
         {
           id: 'recXXXXXXXXXX1',
           fields: {
             Name: 'John Doe',
             Phone: '(212) 555-1111',
-            Languages: ['English', 'Russian', 'Mandarin', 'Bangla'],
+            WorkerSid: null,
+            uniqueName: 'John Doe-recXXXXXXXXXX1',
           },
           createdTime: '2020-05-16T11:44:24.000Z',
         },
@@ -1336,7 +1340,8 @@ describe('TwilioTaskRouter class', () => {
           fields: {
             Name: 'Jane Doe',
             Phone: '(646) 555-2222',
-            Languages: ['English', 'Spanish'],
+            WorkerSid: 'WKxxxxxxxxxxxxxxxxxxxxxxx2',
+            uniqueName: 'Jane Doe-recXXxxxxxxxXXX2',
           },
           createdTime: '2020-05-05T03:55:12.000Z',
         },
@@ -1371,22 +1376,26 @@ describe('TwilioTaskRouter class', () => {
       await taskRouter.syncWorkers();
       expect(deleteWorkerStub.calledOnce).to.equal(true);
       expect(createStub.calledOnce).to.equal(true);
-      expect(updateWorkerDetailsStub.calledOnce).to.equal(true);
+      expect(updateWorkerDetailsStub.called).to.equal(false);
       expect(deleteWorkerStub.firstCall.firstArg).to.equal(
         'WKxxxxxxxxxxxxxxxxxxxxxxx1',
       );
-      expect(updateWorkerDetailsStub.firstCall.args[0]).to.equal(
-        'WKxxxxxxxxxxxxxxxxxxxxxxx2',
-      );
-      expect(updateWorkerDetailsStub.firstCall.args[1]).to.equal(
-        '{"languages":["English","Spanish"],"contact_uri":"+16465552222"}',
-      );
-      expect(updateWorkerDetailsStub.firstCall.args[2]).to.equal('Jane Doe');
       expect(createStub.firstCall.firstArg).to.eql({
-        attributes:
-          '{"languages":["English","Russian","Mandarin","Bangla"],"contact_uri":"+12125551111"}',
-        friendlyName: 'John Doe',
+        attributes: '{"languages":["English"],"contact_uri":"+12125551111"}',
+        friendlyName: 'John Doe-recXXXXXXXXXX1',
       });
+      expect(updateRecordsStub.firstCall.args[0]).to.equal(
+        config.airtable.phoneBase,
+      );
+      expect(updateRecordsStub.firstCall.args[1]).to.equal('Volunteers');
+      expect(updateRecordsStub.firstCall.args[2]).to.eql([
+        {
+          id: 'recXXXXXXXXXX1',
+          fields: {
+            WorkerSid: newWorkerSid,
+          },
+        },
+      ]);
     });
   });
 });

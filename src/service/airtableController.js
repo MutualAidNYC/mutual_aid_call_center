@@ -95,7 +95,7 @@ class AirtableController {
     return result;
   }
 
-  async updateRecords(baseId, table, records = []) {
+  async updateRecords(baseId, table, records) {
     const base = this.airtable.base(baseId);
     const baseTable = base(table);
     let recordsToUpdate = records.slice(0);
