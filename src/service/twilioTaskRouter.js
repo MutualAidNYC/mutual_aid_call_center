@@ -18,10 +18,6 @@ const saveVmToDb = (url, language, phone, callSid) => {
   return airtableController.addVmToDb(callSid, url, language, phone.slice(2));
 };
 
-const isLanguagesDifferent = (language1, language2) => {
-  return language1.sort().join() !== language2.sort().join();
-};
-
 const formatPhoneNumber = (number) => {
   const regex = /(\(|\)|\s|-|‐)/gi;
   return `+1${number.replace(regex, '')}`;
@@ -38,8 +34,8 @@ class TwilioTaskRouter {
     this.workers = {};
   }
 
-  _deleteWorker(workerSid) {
-    this.workspace.workers(workerSid).remove();
+  async _deleteWorker(workerSid) {
+    return this.workspace.workers(workerSid).remove();
   }
 
   async _getPendingReservation(workerSid) {
@@ -391,70 +387,70 @@ class TwilioTaskRouter {
 
   async syncWorkers() {
     // get airtableworkers
-    const airtableWokers = await airtableController.fetchAllRecordsFromTable(
+    const airtableWorkers = await airtableController.fetchAllRecordsFromTable(
       'Volunteers',
       config.airtable.phoneBase,
     );
     const twilioWorkers = await this._fetchWorkers();
     // get workers
     const workers = {};
-    // for each airtableworker
-    airtableWokers.forEach(async (worker) => {
-      if (
-        !worker.fields.Phone ||
-        !worker.fields.Name ||
-        !worker.fields.Languages
-      ) {
+    const airtableUpdateRecords = [];
+    // eslint-disable-next-line no-restricted-syntax
+    for (const worker of airtableWorkers) {
+      // for each airtableworker
+      if (!worker.fields.Phone || !worker.fields.Name) {
         // If any values are missing, skip
         return;
       }
       const phone = formatPhoneNumber(worker.fields.Phone);
-
-      workers[phone] = {
-        phone,
-        languages: worker.fields.Languages || [],
-      };
-
-      const updateObj = {
-        friendlyName: worker.fields.Name,
-        attributes: JSON.stringify({
+      if (worker.fields.WorkerSid) {
+        workers[worker.fields.WorkerSid] = {
+          phone,
           languages: worker.fields.Languages || [],
+        };
+      }
+
+      const createObj = {
+        friendlyName: worker.fields.uniqueName,
+        attributes: JSON.stringify({
+          languages: ['English'],
           contact_uri: phone,
         }),
       };
 
-      if (!twilioWorkers[phone]) {
+      if (!worker.fields.WorkerSid) {
         //   create if need to
-        await this.workspace.workers.create(updateObj);
-      } else if (
-        isLanguagesDifferent(
-          twilioWorkers[phone].languages,
-          worker.fields.Languages,
-        ) ||
-        twilioWorkers[phone].friendlyName !== worker.fields.Name
-      ) {
-        //   update if need to
-        await this._updateWorkerDetails(
-          twilioWorkers[phone].sid,
-          updateObj.attributes,
-          updateObj.friendlyName,
-        );
+        // eslint-disable-next-line no-await-in-loop
+        const newWorker = await this.workspace.workers.create(createObj);
+        const updateObj = {
+          id: worker.id,
+          fields: {
+            WorkerSid: newWorker.sid,
+          },
+        };
+        airtableUpdateRecords.push(updateObj);
       }
-    });
+    }
     // foreach twilio worker
     Object.keys(twilioWorkers).forEach(async (contactUri) => {
-      if (
-        !workers[contactUri] &&
-        twilioWorkers[contactUri].sid !== config.twilio.vmWorkerSid
-      ) {
+      const { sid } = twilioWorkers[contactUri];
+      if (!workers[sid] && sid !== config.twilio.vmWorkerSid) {
         // if we didn't see it in airtable list, and it isn't the VM worker
 
         // eslint-disable-next-line no-await-in-loop
-        await this._deleteWorker(twilioWorkers[contactUri].sid);
+        try {
+          await this._deleteWorker(sid);
+        } catch (e) {
+          logger.warn(e.message);
+        }
       }
     });
 
-    //  delete if need to unless its vm
+    await airtableController.updateRecords(
+      config.airtable.phoneBase,
+      'Volunteers',
+      airtableUpdateRecords,
+    );
   }
 }
 
