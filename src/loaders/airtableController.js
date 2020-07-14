@@ -1,7 +1,10 @@
 const airTableController = require('../service/airtableController');
 const taskRouter = require('../service/twilioTaskRouter');
+const config = require('../config');
 
 module.exports = () => {
   airTableController.taskRouter = taskRouter;
-  airTableController.pollForDownloadedVmToDelete();
+  if (config.twilio.isVmEnabled) {
+    airTableController.pollForDownloadedVmToDelete();
+  }
 };
