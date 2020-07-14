@@ -9,6 +9,4 @@ module.exports = async () => {
   logger.info('twilio loaded');
   initAirtable();
   logger.info('Airtable ready');
-  await taskRouter.syncWorkers();
-  logger.info('Workers synced');
 };
