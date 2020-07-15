@@ -36,6 +36,20 @@ class AirtableController {
     return this.addRowToTable(config.airtable.vmBase, 'Voice Mails', fields);
   }
 
+  async createRecords(baseId, table, records) {
+    const base = this.airtable.base(baseId);
+    const baseTable = base(table);
+    let recordsToCreate = records.slice(0);
+    while (recordsToCreate.length) {
+      const batch = recordsToCreate.slice(0, 10);
+      recordsToCreate = recordsToCreate.slice(10);
+      /* eslint-disable no-await-in-loop */
+      await baseTable.create(batch);
+      await sleep(250);
+      /* eslint-enable no-await-in-loop */
+    }
+  }
+
   async pollForDownloadedVmToDelete() {
     const base = this.airtable.base(config.airtable.vmBase);
     const tableSelect = base('Voice Mails').select({
