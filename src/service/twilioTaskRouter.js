@@ -414,6 +414,7 @@ class TwilioTaskRouter {
   }
 
   async startShift(shift) {
+    const logRecords = [];
     // get day of week
     const dayOfWeek = moment().tz('America/New_York').format('dddd');
     const dayShift = `${dayOfWeek} ${shift}`;
@@ -445,6 +446,13 @@ class TwilioTaskRouter {
       if (worker.activityName === 'Offline') {
         //   3. 1 & 2 should be at one invocation
         this._updateWorkerDetails(sid, attributes, null, availableSid);
+        logRecords.push({
+          fields: {
+            'Unique Name': worker.friendlyName,
+            Availability: 'Available',
+            Reason: 'Shift Start',
+          },
+        });
       } else {
         this._updateWorkerDetails(sid, attributes, null);
       }
@@ -474,8 +482,20 @@ class TwilioTaskRouter {
           JSON.parse(worker.attributes).contact_uri,
           'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
         );
+        logRecords.push({
+          fields: {
+            'Unique Name': worker.friendlyName,
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+          },
+        });
       }
     });
+    await airtableController.createRecords(
+      config.airtable.phoneBase,
+      'Volunteer Availability Log',
+      logRecords,
+    );
   }
 
   async syncWorkers() {

@@ -1423,6 +1423,7 @@ describe('TwilioTaskRouter class', () => {
     let updateWorkerDetailsStub;
     let shuffleStub;
     let sendTextSub;
+    let createRecordsStub;
     const oldActivities = taskRouter.activities;
     const startTxtMessage =
       'Mutual Aid NYC thanks you for volunteering! Your Tuesday 5PM - 8PM shift is starting now. If you need to temporarily pause incoming calls, please respond to this text message with "pause calls"';
@@ -1450,28 +1451,28 @@ describe('TwilioTaskRouter class', () => {
       WKxxxxxxxxx1: {
         activityName: 'Offline',
         available: false,
-        friendly_name: 'John Doe',
+        friendlyName: 'John Doe',
         sid: 'WKxxxxxxxxx1',
         attributes: '{"languages":["English"],"contact_uri":"+15551111111"}',
       },
       WKxxxxxxxxx2: {
         activityName: 'available',
         available: false,
-        friendly_name: 'Jane Doe',
+        friendlyName: 'Jane Doe',
         sid: 'WKxxxxxxxxx2',
         attributes: '{"languages":["English"],"contact_uri":"+15552222222"}',
       },
       WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3: {
         activityName: 'available',
         available: false,
-        friendly_name: 'NewWorker',
+        friendlyName: 'NewWorker',
         sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
         attributes: '{"languages":["English"],"contact_uri":"+15553333333"}',
       },
       WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4: {
         activityName: 'Offline',
         available: false,
-        friendly_name: 'NewWorker2',
+        friendlyName: 'NewWorker2',
         sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4',
         attributes: '{"languages":["English"],"contact_uri":"+15554444444"}',
       },
@@ -1492,6 +1493,7 @@ describe('TwilioTaskRouter class', () => {
       shuffleStub = sinon.stub(_, 'shuffle');
       shuffleStub.returns(volunteerRecords);
       sendTextSub = sinon.stub(taskRouter, '_sendTextMessage');
+      createRecordsStub = sinon.stub(airtableController, 'createRecords');
     });
 
     afterEach(() => {
@@ -1502,6 +1504,7 @@ describe('TwilioTaskRouter class', () => {
       updateWorkerDetailsStub.restore();
       shuffleStub.restore();
       sendTextSub.restore();
+      createRecordsStub.restore();
     });
     it('Signs in (and syncs their properties) new workers and signs out old workers', async () => {
       await taskRouter.startShift('5PM - 8PM');
@@ -1548,6 +1551,29 @@ describe('TwilioTaskRouter class', () => {
       expect(sendTextSub.thirdCall.args[1]).to.equal(
         'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
       );
+
+      expect(createRecordsStub.firstCall.args[0]).to.equal(
+        config.airtable.phoneBase,
+      );
+      expect(createRecordsStub.firstCall.args[1]).to.equal(
+        'Volunteer Availability Log',
+      );
+      expect(createRecordsStub.firstCall.args[2]).to.eql([
+        {
+          fields: {
+            Availability: 'Available',
+            Reason: 'Shift Start',
+            'Unique Name': 'John Doe',
+          },
+        },
+        {
+          fields: {
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+            'Unique Name': 'NewWorker',
+          },
+        },
+      ]);
     });
   });
 
