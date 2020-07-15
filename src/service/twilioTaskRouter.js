@@ -1,4 +1,7 @@
 const twilio = require('twilio');
+const moment = require('moment-timezone');
+// const shuffle = require('lodash.shuffle');
+const _ = require('lodash');
 const config = require('../config');
 const { logger } = require('../loaders/logger');
 const airtableController = require('./airtableController');
@@ -77,6 +80,23 @@ class TwilioTaskRouter {
     return result;
   }
 
+  async _fetchWorkersBySid() {
+    const result = {};
+    const workers = await this.workspace.workers.list({ limit: 1000 });
+    workers.forEach((worker) => {
+      result[worker.sid] = worker;
+    });
+    return result;
+  }
+
+  _sendTextMessage(to, body) {
+    return this.client.messages.create({
+      from: config.twilio.callerId,
+      to,
+      body,
+    });
+  }
+
   async _updateTask(taskSid, assignmentStatus, reason) {
     const task = await this._fetchTask(taskSid);
     return task.update({ assignmentStatus, reason });
@@ -102,10 +122,18 @@ class TwilioTaskRouter {
       .update({ reservationStatus: newStatus });
   }
 
-  _updateWorkerDetails(workerSid, attributes, friendlyName) {
-    return this.workspace
-      .workers(workerSid)
-      .update({ attributes, friendlyName });
+  _updateWorkerDetails(workerSid, attributes, friendlyName, activitySid) {
+    const updateObj = {};
+    if (attributes) {
+      updateObj.attributes = attributes;
+    }
+    if (friendlyName) {
+      updateObj.friendlyName = friendlyName;
+    }
+    if (activitySid) {
+      updateObj.activitySid = activitySid;
+    }
+    return this.workspace.workers(workerSid).update(updateObj);
   }
 
   deleteRecording(recordingSid) {
@@ -382,6 +410,71 @@ class TwilioTaskRouter {
 
     this._updateCall(taskAttributes.call_sid, {
       twiml: response.toString(),
+    });
+  }
+
+  async startShift(shift) {
+    // get day of week
+    const dayOfWeek = moment().tz('America/New_York').format('dddd');
+    const dayShift = `${dayOfWeek} ${shift}`;
+    const availableSid = this.activities.Available;
+    // get from airtable volunteers for the shift on that day
+    const volunteers = await airtableController.fetchAllRecordsFromTable(
+      'Volunteers',
+      config.airtable.phoneBase,
+      dayShift,
+    );
+    const volunteerObj = {};
+    // get from twilio the list of workers, not using _fetchWorkers function
+    // create object for the workers with sid as the key
+    const workers = await this._fetchWorkersBySid();
+    // shuffle the volunteers
+    // we should then loop through volunteer array
+    _.shuffle(volunteers).forEach((volunteer) => {
+      const sid = volunteer.fields.WorkerSid;
+      // if we don't yet have the worker sid, it hasn't been synced, go to next
+      if (!sid) return;
+      const phone = formatPhoneNumber(volunteer.fields.Phone);
+      const attributes = JSON.stringify({
+        languages: volunteer.fields[dayShift],
+        contact_uri: phone,
+      });
+      const worker = workers[sid];
+      //   1. if worker is offline - set them to Available
+      //   2. update their phone/languages
+      if (worker.activityName === 'Offline') {
+        //   3. 1 & 2 should be at one invocation
+        this._updateWorkerDetails(sid, attributes, null, availableSid);
+      } else {
+        this._updateWorkerDetails(sid, attributes, null);
+      }
+      //   4. create obj for volunteers with sid as key
+      volunteerObj[sid] = volunteer;
+      //   5. send text message indicating the specific shift has started
+      const msg = `Mutual Aid NYC thanks you for volunteering! Your ${dayShift} shift is starting now. If you need to temporarily pause incoming calls, please respond to this text message with "pause calls"`;
+      this._sendTextMessage(phone, msg);
+    });
+    // for every worker that isn't offline
+    const workerSids = Object.keys(workers);
+    workerSids.forEach((sid) => {
+      if (!Object.prototype.hasOwnProperty.call(workers, sid)) return;
+      if (sid === config.twilio.vmWorkerSid) return;
+      const worker = workers[sid];
+      if (worker.activityName !== 'Offline' && !volunteerObj[worker.sid]) {
+        //   1. if the worker is in the volunteer obj do nothing
+        //   2. worker should be set to offline
+        this._updateWorkerDetails(
+          worker.sid,
+          null,
+          null,
+          this.activities.Offline,
+        );
+        //   3. text message indicating shift end should be sent
+        this._sendTextMessage(
+          JSON.parse(worker.attributes).contact_uri,
+          'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+        );
+      }
     });
   }
 
