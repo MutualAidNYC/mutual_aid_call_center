@@ -38,7 +38,8 @@ A web api server for managing a Twilio IVR system and using airtable as a front 
    8. AIRTABLE_API_KEY: airtable api key
    9. TWILIO_TASKROUTER_VM_SID: SID of the worker that represents VM
    10. HOST_NAME: Your hostname for example www.google.com
-   11. Optional variables, omittance = false
+   11. CALLER_ID: Your caller ID from which text messages are sent. Must be an available Caller ID for the account
+   12. Optional variables, omittance = false
        1. ENABLE_VM: `true`or`false`, enables or disables voicemail recordings
        2. ENABLE_VM_ENGLISH_TRANSCRIPTION: `true` or `false` enables of disable transcription of english VMs
        3. ENABLE_ANSWER_MACHINE_DETECTION: `true` or `false` enables automatic answer machine detection (AMD) when calling volunteers

@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
+const _ = require('lodash');
 const taskRouter = require('../../src/service/twilioTaskRouter');
 const config = require('../../src/config');
 const airtableController = require('../../src/service/airtableController');
@@ -1283,25 +1284,42 @@ describe('TwilioTaskRouter class', () => {
     });
   });
   describe('_UpdateWorkerDetails', () => {
-    const workersStub = sinon.stub();
-    const upodateStub = sinon.stub();
+    let workersStub;
+    let updateStub;
     const workerSid = 'WRxxxxxxxxxxxx';
+    const activitySid = 'WAxxxxxxxxx';
     const attributes = 'some json';
     const friendlyName = 'john doe';
     const originalWorkSpace = taskRouter.workspace;
-    before(() => {
-      workersStub.returns({ update: upodateStub });
+    beforeEach(() => {
+      workersStub = sinon.stub();
+      updateStub = sinon.stub();
+      workersStub.returns({ update: updateStub });
       taskRouter.workspace = { workers: workersStub };
     });
-    after(() => {
+    afterEach(() => {
       taskRouter.workspace = originalWorkSpace;
     });
-    it('Updates specified worker', () => {
+    it('Updates specified worker, without activity', () => {
       taskRouter._updateWorkerDetails(workerSid, attributes, friendlyName);
       expect(workersStub.firstCall.firstArg).to.equal(workerSid);
-      expect(upodateStub.firstCall.firstArg).to.eql({
+      expect(updateStub.firstCall.firstArg).to.eql({
         attributes,
         friendlyName,
+      });
+    });
+    it('Updates specified worker, with activity', () => {
+      taskRouter._updateWorkerDetails(
+        workerSid,
+        attributes,
+        friendlyName,
+        activitySid,
+      );
+      expect(workersStub.firstCall.firstArg).to.equal(workerSid);
+      expect(updateStub.firstCall.firstArg).to.eql({
+        attributes,
+        friendlyName,
+        activitySid,
       });
     });
   });
@@ -1393,6 +1411,319 @@ describe('TwilioTaskRouter class', () => {
           id: 'recXXXXXXXXXX1',
           fields: {
             WorkerSid: newWorkerSid,
+          },
+        },
+      ]);
+    });
+  });
+  describe('startShift', () => {
+    let clock;
+    let fetchAllRecords;
+    let fetchWorkersBySidStub;
+    let updateWorkerDetailsStub;
+    let shuffleStub;
+    let sendTextSub;
+    let createRecordsStub;
+    const oldActivities = taskRouter.activities;
+    const startTxtMessage =
+      'Mutual Aid NYC thanks you for volunteering! Your Tuesday 5PM - 8PM shift is starting now. If you need to temporarily pause incoming calls, please respond to this text message with "pause calls"';
+    const volunteerRecords = [
+      {
+        id: 'recxxxxxxxxx1',
+        fields: {
+          Name: 'John Doe',
+          Phone: '(202) 555-5555',
+          'Tuesday 5PM - 8PM': ['Spanish', 'English'],
+          WorkerSid: 'WKxxxxxxxxx1',
+        },
+      },
+      {
+        id: 'recxxxxxxxxxxxx2',
+        fields: {
+          Name: 'Jane Doe',
+          Phone: '(201) 555-5555',
+          'Tuesday 5PM - 8PM': ['Spanish', 'English'],
+          WorkerSid: 'WKxxxxxxxxx2',
+        },
+      },
+    ];
+    const workers = {
+      WKxxxxxxxxx1: {
+        activityName: 'Offline',
+        available: false,
+        friendlyName: 'John Doe',
+        sid: 'WKxxxxxxxxx1',
+        attributes: '{"languages":["English"],"contact_uri":"+15551111111"}',
+      },
+      WKxxxxxxxxx2: {
+        activityName: 'available',
+        available: false,
+        friendlyName: 'Jane Doe',
+        sid: 'WKxxxxxxxxx2',
+        attributes: '{"languages":["English"],"contact_uri":"+15552222222"}',
+      },
+      WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3: {
+        activityName: 'available',
+        available: false,
+        friendlyName: 'NewWorker',
+        sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
+        attributes: '{"languages":["English"],"contact_uri":"+15553333333"}',
+      },
+      WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4: {
+        activityName: 'Offline',
+        available: false,
+        friendlyName: 'NewWorker2',
+        sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4',
+        attributes: '{"languages":["English"],"contact_uri":"+15554444444"}',
+      },
+    };
+    beforeEach(() => {
+      clock = sinon.useFakeTimers(1594770033810); // tuesday in eastern tz
+      fetchAllRecords = sinon.stub(
+        airtableController,
+        'fetchAllRecordsFromTable',
+      );
+      fetchAllRecords.resolves(volunteerRecords);
+
+      fetchWorkersBySidStub = sinon.stub(taskRouter, '_fetchWorkersBySid');
+      fetchWorkersBySidStub.resolves(workers);
+
+      taskRouter.activities = { Available: 'WAxxx1', Offline: 'WAxxx2' };
+      updateWorkerDetailsStub = sinon.stub(taskRouter, '_updateWorkerDetails');
+      shuffleStub = sinon.stub(_, 'shuffle');
+      shuffleStub.returns(volunteerRecords);
+      sendTextSub = sinon.stub(taskRouter, '_sendTextMessage');
+      createRecordsStub = sinon.stub(airtableController, 'createRecords');
+    });
+
+    afterEach(() => {
+      clock.restore();
+      fetchAllRecords.restore();
+      fetchWorkersBySidStub.restore();
+      taskRouter.activities = oldActivities;
+      updateWorkerDetailsStub.restore();
+      shuffleStub.restore();
+      sendTextSub.restore();
+      createRecordsStub.restore();
+    });
+    it('Signs in (and syncs their properties) new workers and signs out old workers', async () => {
+      await taskRouter.startShift('5PM - 8PM');
+      expect(fetchAllRecords.firstCall.args[0]).to.equal('Volunteers');
+      expect(fetchAllRecords.firstCall.args[1]).to.equal(
+        config.airtable.phoneBase,
+      );
+      expect(fetchAllRecords.firstCall.args[2]).to.equal('Tuesday 5PM - 8PM');
+      expect(shuffleStub.called).to.equal(true);
+      expect(updateWorkerDetailsStub.firstCall.args[0]).to.equal(
+        'WKxxxxxxxxx1',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[1]).to.equal(
+        '{"languages":["Spanish","English"],"contact_uri":"+12025555555"}',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.firstCall.args[3]).to.equal('WAxxx1');
+
+      expect(sendTextSub.firstCall.args[0]).to.equal('+12025555555');
+      expect(sendTextSub.firstCall.args[1]).to.equal(startTxtMessage);
+      expect(sendTextSub.secondCall.args[0]).to.equal('+12015555555');
+      expect(sendTextSub.secondCall.args[1]).to.equal(startTxtMessage);
+
+      expect(updateWorkerDetailsStub.secondCall.args[0]).to.equal(
+        'WKxxxxxxxxx2',
+      );
+      expect(updateWorkerDetailsStub.secondCall.args[1]).to.equal(
+        '{"languages":["Spanish","English"],"contact_uri":"+12015555555"}',
+      );
+      // const x = updateWorkerDetailsStub.getCalls();
+      expect(updateWorkerDetailsStub.secondCall.args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.secondCall.args[3]).to.equal(undefined);
+
+      expect(updateWorkerDetailsStub.getCalls()[2].args[0]).to.equal(
+        'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
+      );
+      expect(updateWorkerDetailsStub.getCalls()[2].args[1]).to.equal(null);
+
+      expect(updateWorkerDetailsStub.getCalls()[2].args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.getCalls()[2].args[3]).to.equal('WAxxx2');
+      expect(updateWorkerDetailsStub.getCalls().length).to.equal(3);
+
+      expect(sendTextSub.thirdCall.args[0]).to.equal('+15553333333');
+      expect(sendTextSub.thirdCall.args[1]).to.equal(
+        'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+      );
+
+      expect(createRecordsStub.firstCall.args[0]).to.equal(
+        config.airtable.phoneBase,
+      );
+      expect(createRecordsStub.firstCall.args[1]).to.equal(
+        'Volunteer Availability Log',
+      );
+      expect(createRecordsStub.firstCall.args[2]).to.eql([
+        {
+          fields: {
+            Availability: 'Available',
+            Reason: 'Shift Start',
+            'Unique Name': 'John Doe',
+          },
+        },
+        {
+          fields: {
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+            'Unique Name': 'NewWorker',
+          },
+        },
+      ]);
+    });
+  });
+
+  describe('_fetchWorkersBySid', () => {
+    let listStub;
+    const worker1 = { sid: 1 };
+    const worker2 = { sid: 2 };
+    beforeEach(() => {
+      listStub = sinon.stub(taskRouter.workspace.workers, 'list');
+      listStub.resolves([worker1, worker2]);
+    });
+    afterEach(() => {
+      listStub.restore();
+    });
+    it('returns all the workers in an object with the sid as the key', async () => {
+      expect(await taskRouter._fetchWorkersBySid()).to.eql({
+        1: worker1,
+        2: worker2,
+      });
+    });
+  });
+
+  describe('_sendTextMessage', () => {
+    const originalClient = taskRouter.client;
+    const createStub = sinon.stub();
+    const phone = '+15551234567';
+    const message = 'what up yo?';
+    beforeEach(() => {
+      taskRouter.client = {
+        messages: {
+          create: createStub,
+        },
+      };
+    });
+
+    afterEach(() => {
+      taskRouter.client = originalClient;
+    });
+    it('Sends a message to the phone provided, from the caller id in config', () => {
+      taskRouter._sendTextMessage(phone, message);
+
+      expect(createStub.firstCall.firstArg).to.eql({
+        from: config.twilio.callerId,
+        body: message,
+        to: phone,
+      });
+    });
+  });
+
+  describe('endShifts', () => {
+    let fetchWorkersBySidStub;
+    let updateWorkerDetailsStub;
+    let sendTextSub;
+    let createRecordsStub;
+    const oldActivities = taskRouter.activities;
+    const workers = {
+      WKxxxxxxxxx1: {
+        activityName: 'Offline',
+        available: false,
+        friendlyName: 'John Doe',
+        sid: 'WKxxxxxxxxx1',
+        attributes: '{"languages":["English"],"contact_uri":"+15551111111"}',
+      },
+      WKxxxxxxxxx2: {
+        activityName: 'available',
+        available: false,
+        friendlyName: 'Jane Doe',
+        sid: 'WKxxxxxxxxx2',
+        attributes: '{"languages":["English"],"contact_uri":"+15552222222"}',
+      },
+      WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3: {
+        activityName: 'available',
+        available: false,
+        friendlyName: 'NewWorker',
+        sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
+        attributes: '{"languages":["English"],"contact_uri":"+15553333333"}',
+      },
+      WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4: {
+        activityName: 'Offline',
+        available: false,
+        friendlyName: 'NewWorker2',
+        sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4',
+        attributes: '{"languages":["English"],"contact_uri":"+15554444444"}',
+      },
+    };
+    beforeEach(() => {
+      fetchWorkersBySidStub = sinon.stub(taskRouter, '_fetchWorkersBySid');
+      fetchWorkersBySidStub.resolves(workers);
+
+      taskRouter.activities = { Available: 'WAxxx1', Offline: 'WAxxx2' };
+      updateWorkerDetailsStub = sinon.stub(taskRouter, '_updateWorkerDetails');
+      sendTextSub = sinon.stub(taskRouter, '_sendTextMessage');
+      createRecordsStub = sinon.stub(airtableController, 'createRecords');
+    });
+
+    afterEach(() => {
+      fetchWorkersBySidStub.restore();
+      taskRouter.activities = oldActivities;
+      updateWorkerDetailsStub.restore();
+      sendTextSub.restore();
+      createRecordsStub.restore();
+    });
+    it("Signs out everyone that isn't VM", async () => {
+      await taskRouter.endShifts();
+
+      expect(updateWorkerDetailsStub.firstCall.args[0]).to.equal(
+        'WKxxxxxxxxx2',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[1]).to.equal(null);
+
+      expect(updateWorkerDetailsStub.firstCall.args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.firstCall.args[3]).to.equal('WAxxx2');
+      expect(sendTextSub.firstCall.args[0]).to.equal('+15552222222');
+      expect(sendTextSub.firstCall.args[1]).to.equal(
+        'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+      );
+
+      expect(updateWorkerDetailsStub.secondCall.args[0]).to.equal(
+        'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
+      );
+      expect(updateWorkerDetailsStub.secondCall.args[1]).to.equal(null);
+
+      expect(updateWorkerDetailsStub.secondCall.args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.secondCall.args[3]).to.equal('WAxxx2');
+      expect(updateWorkerDetailsStub.getCalls().length).to.equal(2);
+
+      expect(sendTextSub.secondCall.args[0]).to.equal('+15553333333');
+      expect(sendTextSub.secondCall.args[1]).to.equal(
+        'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+      );
+
+      expect(createRecordsStub.firstCall.args[0]).to.equal(
+        config.airtable.phoneBase,
+      );
+      expect(createRecordsStub.firstCall.args[1]).to.equal(
+        'Volunteer Availability Log',
+      );
+      expect(createRecordsStub.firstCall.args[2]).to.eql([
+        {
+          fields: {
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+            'Unique Name': 'Jane Doe',
+          },
+        },
+        {
+          fields: {
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+            'Unique Name': 'NewWorker',
           },
         },
       ]);
