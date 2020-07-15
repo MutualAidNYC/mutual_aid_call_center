@@ -22,6 +22,7 @@ module.exports = {
       ? process.env.ENABLE_ANSWER_MACHINE_DETECTION.toLowerCase().trim() ===
         'true'
       : false,
+    callerId: process.env.CALLER_ID,
   },
   airtable: {
     phoneBase: process.env.PHONE_BASE,
