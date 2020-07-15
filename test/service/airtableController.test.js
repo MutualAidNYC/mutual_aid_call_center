@@ -465,4 +465,41 @@ describe('airtableController', () => {
       expect(updateStub.secondCall.firstArg).to.eql([10, 11, 12, 13, 14, 15]);
     });
   });
+  describe('createRecords', () => {
+    const tableName = 'some table';
+    let createStub;
+    let baseStub;
+    let selectedBaseStub;
+    const records = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    beforeEach(() => {
+      baseStub = sinon.stub(airtableController.airtable, 'base');
+      createStub = sinon.stub();
+      selectedBaseStub = sinon.stub();
+
+      baseStub.returns(selectedBaseStub);
+      selectedBaseStub.returns({ create: createStub });
+    });
+    afterEach(() => {
+      baseStub.restore();
+    });
+    it('Create the specified records', async () => {
+      await airtableController.createRecords(baseId, tableName, records);
+      expect(baseStub.firstCall.firstArg).to.equal(baseId);
+      expect(selectedBaseStub.firstCall.firstArg).to.equal(tableName);
+      expect(createStub.calledTwice).to.equal(true);
+      expect(createStub.firstCall.firstArg).to.eql([
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+      ]);
+      expect(createStub.secondCall.firstArg).to.eql([10, 11, 12, 13, 14, 15]);
+    });
+  });
 });
