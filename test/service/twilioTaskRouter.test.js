@@ -1622,4 +1622,111 @@ describe('TwilioTaskRouter class', () => {
       });
     });
   });
+
+  describe('endShifts', () => {
+    let fetchWorkersBySidStub;
+    let updateWorkerDetailsStub;
+    let sendTextSub;
+    let createRecordsStub;
+    const oldActivities = taskRouter.activities;
+    const workers = {
+      WKxxxxxxxxx1: {
+        activityName: 'Offline',
+        available: false,
+        friendlyName: 'John Doe',
+        sid: 'WKxxxxxxxxx1',
+        attributes: '{"languages":["English"],"contact_uri":"+15551111111"}',
+      },
+      WKxxxxxxxxx2: {
+        activityName: 'available',
+        available: false,
+        friendlyName: 'Jane Doe',
+        sid: 'WKxxxxxxxxx2',
+        attributes: '{"languages":["English"],"contact_uri":"+15552222222"}',
+      },
+      WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3: {
+        activityName: 'available',
+        available: false,
+        friendlyName: 'NewWorker',
+        sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
+        attributes: '{"languages":["English"],"contact_uri":"+15553333333"}',
+      },
+      WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4: {
+        activityName: 'Offline',
+        available: false,
+        friendlyName: 'NewWorker2',
+        sid: 'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX4',
+        attributes: '{"languages":["English"],"contact_uri":"+15554444444"}',
+      },
+    };
+    beforeEach(() => {
+      fetchWorkersBySidStub = sinon.stub(taskRouter, '_fetchWorkersBySid');
+      fetchWorkersBySidStub.resolves(workers);
+
+      taskRouter.activities = { Available: 'WAxxx1', Offline: 'WAxxx2' };
+      updateWorkerDetailsStub = sinon.stub(taskRouter, '_updateWorkerDetails');
+      sendTextSub = sinon.stub(taskRouter, '_sendTextMessage');
+      createRecordsStub = sinon.stub(airtableController, 'createRecords');
+    });
+
+    afterEach(() => {
+      fetchWorkersBySidStub.restore();
+      taskRouter.activities = oldActivities;
+      updateWorkerDetailsStub.restore();
+      sendTextSub.restore();
+      createRecordsStub.restore();
+    });
+    it("Signs out everyone that isn't VM", async () => {
+      await taskRouter.endShifts();
+
+      expect(updateWorkerDetailsStub.firstCall.args[0]).to.equal(
+        'WKxxxxxxxxx2',
+      );
+      expect(updateWorkerDetailsStub.firstCall.args[1]).to.equal(null);
+
+      expect(updateWorkerDetailsStub.firstCall.args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.firstCall.args[3]).to.equal('WAxxx2');
+      expect(sendTextSub.firstCall.args[0]).to.equal('+15552222222');
+      expect(sendTextSub.firstCall.args[1]).to.equal(
+        'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+      );
+
+      expect(updateWorkerDetailsStub.secondCall.args[0]).to.equal(
+        'WKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX3',
+      );
+      expect(updateWorkerDetailsStub.secondCall.args[1]).to.equal(null);
+
+      expect(updateWorkerDetailsStub.secondCall.args[2]).to.equal(null);
+      expect(updateWorkerDetailsStub.secondCall.args[3]).to.equal('WAxxx2');
+      expect(updateWorkerDetailsStub.getCalls().length).to.equal(2);
+
+      expect(sendTextSub.secondCall.args[0]).to.equal('+15553333333');
+      expect(sendTextSub.secondCall.args[1]).to.equal(
+        'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+      );
+
+      expect(createRecordsStub.firstCall.args[0]).to.equal(
+        config.airtable.phoneBase,
+      );
+      expect(createRecordsStub.firstCall.args[1]).to.equal(
+        'Volunteer Availability Log',
+      );
+      expect(createRecordsStub.firstCall.args[2]).to.eql([
+        {
+          fields: {
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+            'Unique Name': 'Jane Doe',
+          },
+        },
+        {
+          fields: {
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+            'Unique Name': 'NewWorker',
+          },
+        },
+      ]);
+    });
+  });
 });

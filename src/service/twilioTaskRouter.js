@@ -145,6 +145,45 @@ class TwilioTaskRouter {
     this.workers = await this._fetchWorkers();
   }
 
+  async endShifts() {
+    const logRecords = [];
+    // create object for the workers with sid as the key
+    const workers = await this._fetchWorkersBySid();
+
+    // for every worker that isn't offline
+    const workerSids = Object.keys(workers);
+    workerSids.forEach((sid) => {
+      if (!Object.prototype.hasOwnProperty.call(workers, sid)) return;
+      if (sid === config.twilio.vmWorkerSid) return;
+      const worker = workers[sid];
+      if (worker.activityName !== 'Offline') {
+        this._updateWorkerDetails(
+          worker.sid,
+          null,
+          null,
+          this.activities.Offline,
+        );
+        //   3. text message indicating shift end should be sent
+        this._sendTextMessage(
+          JSON.parse(worker.attributes).contact_uri,
+          'Thanks again for volunteering, your shift has ended. You should receive no more new calls.',
+        );
+        logRecords.push({
+          fields: {
+            'Unique Name': worker.friendlyName,
+            Availability: 'Unavailable',
+            Reason: 'Shift End',
+          },
+        });
+      }
+    });
+    await airtableController.createRecords(
+      config.airtable.phoneBase,
+      'Volunteer Availability Log',
+      logRecords,
+    );
+  }
+
   async handleAgentConnected(event) {
     const response = new VoiceResponse();
     const workerSid = this.workers[event.Called].sid;
