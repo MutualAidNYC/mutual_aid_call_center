@@ -81,6 +81,7 @@ describe('TwilioTaskRouter class', () => {
     let workersStub;
     const defaultWorkspace = taskRouter.workspace;
     let updateStub;
+    let addRowStub;
     beforeEach(() => {
       taskRouter.activities = activityObj;
       taskRouter.workers = workersObj;
@@ -88,13 +89,26 @@ describe('TwilioTaskRouter class', () => {
       updateStub = sinon.stub();
       taskRouter.workspace = {};
       taskRouter.workspace.workers = workersStub;
+      addRowStub = sinon.stub(airtableController, 'addRowToTable');
     });
     afterEach(() => {
       taskRouter.workspace = defaultWorkspace;
+      addRowStub.restore();
     });
-    it('Signs in a user', async () => {
+    it('Ignores unknown numbers', async () => {
       const event = {
         Body: 'On',
+        From: '+15551111234',
+      };
+      expect(await taskRouter.handleIncomingSms(event)).to.equal(
+        '<?xml version="1.0" encoding="UTF-8"?><Response/>',
+      );
+      expect(workersStub.called).to.equal(false);
+      expect(updateStub.called).to.equal(false);
+    });
+    it(`If phrase isn't recognized respond with instructions`, async () => {
+      const event = {
+        Body: 'Resume   ',
         From: '+15556667777',
       };
       workersStub.returns({
@@ -104,26 +118,66 @@ describe('TwilioTaskRouter class', () => {
         activityName: 'Available',
       });
       expect(await taskRouter.handleIncomingSms(event)).to.equal(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Bob Marley, You are signed in</Message></Response>',
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>I'm sorry I don't understand. To pause incoming calls, respond with "pause calls". To resume receiving calls, respond with "resume calls"</Message></Response>`,
+      );
+      expect(workersStub.called).to.equal(false);
+      expect(updateStub.called).to.equal(false);
+    });
+    it('Marks User as available and responds accordingly, also adds to log', async () => {
+      const event = {
+        Body: 'Resume Calls   ',
+        From: '+15556667777',
+      };
+      workersStub.returns({
+        update: updateStub,
+      });
+      updateStub.returns({
+        activityName: 'Available',
+      });
+      expect(await taskRouter.handleIncomingSms(event)).to.equal(
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Message>You are now marked as available for calls. To pause calls again, please respond with "pause calls"</Message></Response>',
       );
       expect(workersStub.firstCall.firstArg).to.equal('WKbaloney2');
       expect(updateStub.firstCall.firstArg).to.eql({
         activitySid: 'WAbaloney2',
       });
+      expect(addRowStub.firstCall.args[0]).to.equal(config.airtable.phoneBase);
+      expect(addRowStub.firstCall.args[1]).to.equal(
+        'Volunteer Availability Log',
+      );
+      expect(addRowStub.firstCall.args[2]).to.eql({
+        'Unique Name': 'Bob Marley',
+        Availability: 'Available',
+        Reason: 'Text Message',
+      });
     });
-    it('Signs out a user', async () => {
+    it('Marks user as offline and sends a message, also adds to log', async () => {
       const event = {
-        Body: 'off',
+        Body: 'pause Calls',
         From: '+12223334444',
       };
-      workersStub.returns({ update: updateStub });
-      updateStub.returns({ activityName: 'Offline' });
+      workersStub.returns({
+        update: updateStub,
+      });
+      updateStub.returns({
+        activityName: 'Offline',
+      });
       expect(await taskRouter.handleIncomingSms(event)).to.equal(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Jane Doe, You are signed out</Message></Response>',
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>We've marked you as unavailable for calls. To begin receiving calls again, respond with "resume calls"</Message></Response>`,
       );
       expect(workersStub.firstCall.firstArg).to.equal('WKbaloney1');
       expect(updateStub.firstCall.firstArg).to.eql({
         activitySid: 'WAbaloney1',
+      });
+
+      expect(addRowStub.firstCall.args[0]).to.equal(config.airtable.phoneBase);
+      expect(addRowStub.firstCall.args[1]).to.equal(
+        'Volunteer Availability Log',
+      );
+      expect(addRowStub.firstCall.args[2]).to.eql({
+        'Unique Name': 'Jane Doe',
+        Availability: 'Unavailable',
+        Reason: 'Text Message',
       });
     });
   });
