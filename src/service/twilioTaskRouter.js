@@ -335,19 +335,52 @@ class TwilioTaskRouter {
   }
 
   async handleIncomingSms(event) {
+    const response = new MessagingResponse();
     const body = event.Body.toLowerCase().trim();
-    const targetActivity = body === 'on' ? 'Available' : 'Offline';
 
     const { workspace } = this;
-    const activitySid = this.activities[targetActivity];
     const worker = this.workers[event.From];
 
-    await workspace.workers(worker.sid).update({ activitySid });
+    if (worker) {
+      const rowObj = {
+        'Unique Name': worker.friendlyName,
+        Reason: 'Text Message',
+      };
+      if (body === 'pause calls') {
+        const activitySid = this.activities.Offline;
+        await workspace.workers(worker.sid).update({ activitySid });
+        response.message(
+          `We've marked you as unavailable for calls. To begin receiving calls again, respond with "resume calls"`,
+        );
+        rowObj.Availability = 'Unavailable';
+        try {
+          await airtableController.addRowToTable(
+            config.airtable.phoneBase,
+            'Volunteer Availability Log',
+            rowObj,
+          );
+        } catch (e) {
+          logger.error(e.message);
+        }
+      } else if (body === 'resume calls') {
+        const activitySid = this.activities.Available;
+        await workspace.workers(worker.sid).update({ activitySid });
+        response.message(
+          `You are now marked as available for calls. To pause calls again, please respond with "pause calls"`,
+        );
+        rowObj.Availability = 'Available';
+        airtableController.addRowToTable(
+          config.airtable.phoneBase,
+          'Volunteer Availability Log',
+          rowObj,
+        );
+      } else {
+        response.message(
+          `I'm sorry I don't understand. To pause incoming calls, respond with "pause calls". To resume receiving calls, respond with "resume calls"`,
+        );
+      }
+    }
 
-    const response = new MessagingResponse();
-    const reply =
-      targetActivity === 'Offline' ? 'You are signed out' : 'You are signed in';
-    response.message(`${worker.friendlyName}, ${reply}`);
     return response.toString();
   }
 
