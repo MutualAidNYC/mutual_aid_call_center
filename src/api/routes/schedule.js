@@ -75,8 +75,10 @@ const getScheduleFromBase = (base) => {
  * invoked returns a schedule object
  * @return {void}
  */
-const setSchedule = async (getSchedule = getScheduleFromBase) => {
-  const schedule = await getSchedule(process.env.PHONE_BASE);
+const setSchedule = async (
+  getSchedule = getScheduleFromBase(process.env.PHONE_BASE),
+) => {
+  const schedule = await getSchedule();
   app.set(SCHEDULE, schedule);
 };
 /**
