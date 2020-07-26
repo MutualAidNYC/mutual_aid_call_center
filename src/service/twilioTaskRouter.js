@@ -265,21 +265,27 @@ class TwilioTaskRouter {
   async handleAgentGather(event) {
     const response = new VoiceResponse();
     const workerSid = this.workers[event.Called].sid;
+    logger.info(`Agent Gather Debug: Entered function, digit: ${event.Digits}`);
     const pendingReservation = await this._getPendingReservation(workerSid);
-    const rejectReservation = () =>
+    logger.info('Agent Gather Debug: pending reservation found');
+    const rejectReservation = () => {
       this._updateReservationStatus(
         workerSid,
         pendingReservation.sid,
         'rejected',
       );
+      logger.info('Agent Gather Debug: Post Reject Reservation');
+    };
     if (event.Digits === '1') {
       if (!pendingReservation) {
         response.play(
           `https://${config.hostName}/assets/caller_disconnected.mp3`,
         );
         response.hangup();
+        logger.info('Agent Gather Debug: No pending reservations found');
         return response.toString();
       }
+      logger.info('Agent Gather Debug: accepted reservation');
       return this._acceptReservationAndbridgeAgent(
         pendingReservation,
         workerSid,
@@ -287,6 +293,7 @@ class TwilioTaskRouter {
     }
     if (event.Digits.length === 0) {
       // no digits detected
+      logger.info('Agent Gather Debug: before reject no digits');
       rejectReservation();
       if (event.CallStatus === 'in-progress') {
         // if call is 'completed', no need to play a message
@@ -294,7 +301,7 @@ class TwilioTaskRouter {
       }
       response.hangup();
     } else if (event.Digits === '9') {
-      // no digits detected
+      logger.info('Agent Gather Debug: before reject 9');
       rejectReservation();
       response.play(
         `https://${config.hostName}/assets/send_call_to_next_volunteer.mp3`,
@@ -302,9 +309,11 @@ class TwilioTaskRouter {
       response.hangup();
     } else {
       // invalid entry
+      logger.info('Agent Gather Debug: invalid entry');
       response.play(`https://${config.hostName}/assets/invalid_entry.mp3`);
       response.redirect(`https://${config.hostName}/api/agent-connected`);
     }
+    logger.info('Agent Gather Debug: End of function');
     return response.toString();
   }
 
@@ -563,6 +572,7 @@ class TwilioTaskRouter {
         });
       }
     });
+    logger.info('StartShift logRecords: %O', logRecords);
     await airtableController.createRecords(
       config.airtable.phoneBase,
       'Volunteer Availability Log',
