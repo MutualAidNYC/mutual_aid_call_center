@@ -269,6 +269,10 @@ class TwilioTaskRouter {
     const pendingReservation = await this._getPendingReservation(workerSid);
     logger.info('Agent Gather Debug: pending reservation found');
     const rejectReservation = () => {
+      if (!pendingReservation) {
+        logger.info('Agent Gather Debug: Skipping reject reservation');
+        return;
+      }
       this._updateReservationStatus(
         workerSid,
         pendingReservation.sid,
