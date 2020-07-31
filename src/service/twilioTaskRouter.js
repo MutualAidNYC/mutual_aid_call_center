@@ -179,7 +179,7 @@ class TwilioTaskRouter {
     });
     await airtableController.createRecords(
       config.airtable.phoneBase,
-      'Volunteer Availability Log',
+      'Sign In / Sign Out record',
       logRecords,
     );
   }
@@ -369,7 +369,7 @@ class TwilioTaskRouter {
         try {
           await airtableController.addRowToTable(
             config.airtable.phoneBase,
-            'Volunteer Availability Log',
+            'Sign In / Sign Out record',
             rowObj,
           );
         } catch (e) {
@@ -384,7 +384,7 @@ class TwilioTaskRouter {
         rowObj.Availability = 'Available';
         airtableController.addRowToTable(
           config.airtable.phoneBase,
-          'Volunteer Availability Log',
+          'Sign In / Sign Out record',
           rowObj,
         );
       } else {
@@ -579,7 +579,7 @@ class TwilioTaskRouter {
     logger.info('StartShift logRecords: %O', logRecords);
     await airtableController.createRecords(
       config.airtable.phoneBase,
-      'Volunteer Availability Log',
+      'Sign In / Sign Out record',
       logRecords,
     );
   }
