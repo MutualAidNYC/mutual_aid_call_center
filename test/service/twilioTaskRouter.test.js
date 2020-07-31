@@ -143,7 +143,7 @@ describe('TwilioTaskRouter class', () => {
       });
       expect(addRowStub.firstCall.args[0]).to.equal(config.airtable.phoneBase);
       expect(addRowStub.firstCall.args[1]).to.equal(
-        'Volunteer Availability Log',
+        'Sign In / Sign Out record',
       );
       expect(addRowStub.firstCall.args[2]).to.eql({
         'Unique Name': 'Bob Marley',
@@ -172,7 +172,7 @@ describe('TwilioTaskRouter class', () => {
 
       expect(addRowStub.firstCall.args[0]).to.equal(config.airtable.phoneBase);
       expect(addRowStub.firstCall.args[1]).to.equal(
-        'Volunteer Availability Log',
+        'Sign In / Sign Out record',
       );
       expect(addRowStub.firstCall.args[2]).to.eql({
         'Unique Name': 'Jane Doe',
@@ -1610,7 +1610,7 @@ describe('TwilioTaskRouter class', () => {
         config.airtable.phoneBase,
       );
       expect(createRecordsStub.firstCall.args[1]).to.equal(
-        'Volunteer Availability Log',
+        'Sign In / Sign Out record',
       );
       expect(createRecordsStub.firstCall.args[2]).to.eql([
         {
@@ -1763,7 +1763,7 @@ describe('TwilioTaskRouter class', () => {
         config.airtable.phoneBase,
       );
       expect(createRecordsStub.firstCall.args[1]).to.equal(
-        'Volunteer Availability Log',
+        'Sign In / Sign Out record',
       );
       expect(createRecordsStub.firstCall.args[2]).to.eql([
         {
