@@ -18,6 +18,7 @@ require('./api/routes/vm-recording-ended');
 require('./api/routes/new-transcription');
 require('./api/routes/agent-gather');
 require('./api/routes/assets');
+require('./api/routes/workspace-event');
 
 const { setSchedule } = require('./api/routes/schedule');
 
