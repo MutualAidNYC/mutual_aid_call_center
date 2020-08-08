@@ -151,7 +151,7 @@ class AirtableController {
   }
 
   async fetchAllRecordsFromTable(table, base, view = 'Grid view') {
-    const urlify = (phrase) => phrase.replace(' ', '%20');
+    const urlify = (phrase) => phrase.replace(/ /gi, '%20');
     const urlifiedTableName = urlify(table);
     const urlifiedView = urlify(view);
     let count = 0;

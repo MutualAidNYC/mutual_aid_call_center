@@ -506,7 +506,7 @@ class TwilioTaskRouter {
     const availableSid = this.activities.Available;
     // get from airtable volunteers for the shift on that day
     const volunteers = await airtableController.fetchAllRecordsFromTable(
-      'Volunteers',
+      'Controls - Phone System Volunteers',
       config.airtable.phoneBase,
       dayShift,
     );
@@ -587,7 +587,7 @@ class TwilioTaskRouter {
   async syncWorkers() {
     // get airtableworkers
     const airtableWorkers = await airtableController.fetchAllRecordsFromTable(
-      'Volunteers',
+      'Controls - Phone System Volunteers',
       config.airtable.phoneBase,
     );
     const twilioWorkers = await this._fetchWorkers();
@@ -647,7 +647,7 @@ class TwilioTaskRouter {
 
     await airtableController.updateRecords(
       config.airtable.phoneBase,
-      'Volunteers',
+      'Controls - Phone System Volunteers',
       airtableUpdateRecords,
     );
   }

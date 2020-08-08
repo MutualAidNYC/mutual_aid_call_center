@@ -5,7 +5,7 @@ const airtable = require('../../service/airtableController');
 const config = require('../../config');
 const airtableController = require('../../service/airtableController');
 
-const TABLE_NAME = 'Hotline Auto Log';
+const TABLE_NAME = 'Auto Call Log';
 const END_STATUS_FIELD = 'Call End Status';
 
 const processEvent = async (event) => {
