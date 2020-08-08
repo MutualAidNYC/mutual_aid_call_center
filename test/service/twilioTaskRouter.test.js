@@ -1459,7 +1459,9 @@ describe('TwilioTaskRouter class', () => {
       expect(updateRecordsStub.firstCall.args[0]).to.equal(
         config.airtable.phoneBase,
       );
-      expect(updateRecordsStub.firstCall.args[1]).to.equal('Volunteers');
+      expect(updateRecordsStub.firstCall.args[1]).to.equal(
+        'Controls - Phone System Volunteers',
+      );
       expect(updateRecordsStub.firstCall.args[2]).to.eql([
         {
           id: 'recXXXXXXXXXX1',
@@ -1562,7 +1564,9 @@ describe('TwilioTaskRouter class', () => {
     });
     it('Signs in (and syncs their properties) new workers and signs out old workers', async () => {
       await taskRouter.startShift('5PM - 8PM');
-      expect(fetchAllRecords.firstCall.args[0]).to.equal('Volunteers');
+      expect(fetchAllRecords.firstCall.args[0]).to.equal(
+        'Controls - Phone System Volunteers',
+      );
       expect(fetchAllRecords.firstCall.args[1]).to.equal(
         config.airtable.phoneBase,
       );
