@@ -34,8 +34,8 @@ const transformSchedule = (airbaseSchedule) => {
 };
 
 /**
- * Generates a function that queries airtable for data from the 'General Hours'
- * table of the given base
+ * Generates a function that queries airtable for data from the
+ * 'Controls - Phone System Lines' table of the given base
  * @author Aaron Young <hi@aaronyoung.io>
  * @param {String} base - ID of the base we are generating a query function for
  * @return {Function} - This function will always query the given base
@@ -57,7 +57,7 @@ const getScheduleFromBase = (base) => {
     let schedule;
     try {
       const response = await axios.get(
-        `https://api.airtable.com/v0/${base}/General%20Hours`,
+        `https://api.airtable.com/v0/${base}/Controls%20-%20Phone%20System%20Lines`,
         config,
       );
       schedule = transformSchedule(response.data);

@@ -236,7 +236,7 @@ describe('airtableController', () => {
   });
 
   describe('fetchAllRecordsFromTable', () => {
-    const table = 'General Hours';
+    const table = 'Controls - Phone System Lines';
     const page1 = {
       records: [
         {
@@ -295,7 +295,7 @@ describe('airtableController', () => {
     const view = 'a view';
     const axiosConfig1 = {
       method: 'get',
-      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=a%20view`,
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/Controls%20-%20Phone%20System%20Lines?view=a%20view`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
@@ -305,7 +305,7 @@ describe('airtableController', () => {
     };
     const axiosConfig2 = {
       method: 'get',
-      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/General%20Hours?view=a%20view`,
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/Controls%20-%20Phone%20System%20Lines?view=a%20view`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
