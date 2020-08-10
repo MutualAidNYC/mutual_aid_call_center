@@ -348,6 +348,7 @@ class TwilioTaskRouter {
   }
 
   async handleIncomingSms(event) {
+    logger.info('DEBUG handleIncomingSMS: entered');
     const response = new MessagingResponse();
     const body = event.Body.toLowerCase().trim();
 
@@ -355,15 +356,25 @@ class TwilioTaskRouter {
     const worker = this.workers[event.From];
 
     if (worker) {
+      logger.info('DEBUG handleIncomingSMS: worker found');
       const rowObj = {
         'Unique Name': worker.friendlyName,
         Reason: 'Text Message',
       };
       if (body === 'pause calls') {
         const activitySid = this.activities.Offline;
+        logger.info(
+          'DEBUG handleIncomingSMS: pause requested before twilio worker update',
+        );
         await workspace.workers(worker.sid).update({ activitySid });
+        logger.info(
+          'DEBUG handleIncomingSMS: pause requested after twilio worker update',
+        );
         response.message(
           `We've marked you as unavailable for calls. To begin receiving calls again, respond with "resume calls"`,
+        );
+        logger.info(
+          'DEBUG handleIncomingSMS: pause requested before airtable update',
         );
         rowObj.Availability = 'Unavailable';
         try {
@@ -375,17 +386,33 @@ class TwilioTaskRouter {
         } catch (e) {
           logger.error(e.message);
         }
+        logger.info(
+          'DEBUG handleIncomingSMS: pause requested after airtable update',
+        );
       } else if (body === 'resume calls') {
         const activitySid = this.activities.Available;
+        logger.info(
+          'DEBUG handleIncomingSMS: resume requested before twilio worker update',
+        );
         await workspace.workers(worker.sid).update({ activitySid });
+        logger.info(
+          'DEBUG handleIncomingSMS: resume requested after twilio worker update',
+        );
         response.message(
           `You are now marked as available for calls. To pause calls again, please respond with "pause calls"`,
         );
         rowObj.Availability = 'Available';
+        logger.info(
+          'DEBUG handleIncomingSMS: resume requested before airtable update',
+        );
+
         airtableController.addRowToTable(
           config.airtable.phoneBase,
           'Sign In / Sign Out record',
           rowObj,
+        );
+        logger.info(
+          'DEBUG handleIncomingSMS: resume requested after update update',
         );
       } else {
         response.message(
