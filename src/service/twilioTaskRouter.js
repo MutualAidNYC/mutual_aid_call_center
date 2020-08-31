@@ -116,10 +116,19 @@ class TwilioTaskRouter {
     return this.client.calls(callSid).update(updateObj);
   }
 
-  _updateReservationStatus(workerSid, reservationSid, newStatus) {
+  _updateReservationStatus(
+    workerSid,
+    reservationSid,
+    newStatus,
+    workerActivitySid,
+  ) {
+    const updateObj = { reservationStatus: newStatus };
+    if (workerActivitySid) {
+      updateObj.WorkerActivitySid = workerActivitySid;
+    }
     return this._getWorkerObj(workerSid)
       .reservations(reservationSid)
-      .update({ reservationStatus: newStatus });
+      .update(updateObj);
   }
 
   _updateWorkerDetails(workerSid, attributes, friendlyName, activitySid) {
@@ -354,28 +363,28 @@ class TwilioTaskRouter {
 
     const { workspace } = this;
     const worker = this.workers[event.From];
-
+    // _getPendingReservation
     if (worker) {
       logger.info('DEBUG handleIncomingSMS: worker found');
       const rowObj = {
         'Unique Name': worker.friendlyName,
         Reason: 'Text Message',
       };
+
       if (body === 'pause calls') {
         const activitySid = this.activities.Offline;
-        logger.info(
-          'DEBUG handleIncomingSMS: pause requested before twilio worker update',
-        );
+        // const reservation = _getPendingReservation(worker.sid);
+        // if (reservation) {
+        //   // do something
+        //   reservation.sid;
+        // }
+        // {
         await workspace.workers(worker.sid).update({ activitySid });
-        logger.info(
-          'DEBUG handleIncomingSMS: pause requested after twilio worker update',
-        );
+        // }
         response.message(
           `We've marked you as unavailable for calls. To begin receiving calls again, respond with "resume calls"`,
         );
-        logger.info(
-          'DEBUG handleIncomingSMS: pause requested before airtable update',
-        );
+
         rowObj.Availability = 'Unavailable';
         try {
           await airtableController.addRowToTable(
@@ -386,33 +395,17 @@ class TwilioTaskRouter {
         } catch (e) {
           logger.error(e.message);
         }
-        logger.info(
-          'DEBUG handleIncomingSMS: pause requested after airtable update',
-        );
       } else if (body === 'resume calls') {
         const activitySid = this.activities.Available;
-        logger.info(
-          'DEBUG handleIncomingSMS: resume requested before twilio worker update',
-        );
         await workspace.workers(worker.sid).update({ activitySid });
-        logger.info(
-          'DEBUG handleIncomingSMS: resume requested after twilio worker update',
-        );
         response.message(
           `You are now marked as available for calls. To pause calls again, please respond with "pause calls"`,
         );
         rowObj.Availability = 'Available';
-        logger.info(
-          'DEBUG handleIncomingSMS: resume requested before airtable update',
-        );
-
         airtableController.addRowToTable(
           config.airtable.phoneBase,
           'Sign In / Sign Out record',
           rowObj,
-        );
-        logger.info(
-          'DEBUG handleIncomingSMS: resume requested after update update',
         );
       } else {
         response.message(
