@@ -1176,6 +1176,37 @@ describe('TwilioTaskRouter class', () => {
       expect(reservationStub.firstCall.firstArg).to.equal(reservationSid);
       expect(updateStub.firstCall.firstArg).to.eql(newStatusObj);
     });
+    it('Updates a reservation and changes worker status', async () => {
+      const reservationStub = sinon.stub();
+      const workerObj = { reservations: reservationStub };
+      const updateStub = sinon.stub();
+      const reservationObj = { update: updateStub };
+      const updateObj = {};
+      const workerSid = 'someSid';
+      const reservationSid = 'someReservationSid';
+      const newStatus = 'someStatus';
+      const newWorkerActivitySid = 'someActivitySid';
+      const newStatusObj = {
+        reservationStatus: newStatus,
+        WorkerActivitySid: newWorkerActivitySid,
+      };
+
+      getWorkerObjStub.returns(workerObj);
+      reservationStub.returns(reservationObj);
+      updateStub.resolves(updateObj);
+
+      expect(
+        await taskRouter._updateReservationStatus(
+          workerSid,
+          reservationSid,
+          newStatus,
+          newWorkerActivitySid,
+        ),
+      ).to.equal(updateObj);
+      expect(getWorkerObjStub.firstCall.firstArg).to.equal(workerSid);
+      expect(reservationStub.firstCall.firstArg).to.equal(reservationSid);
+      expect(updateStub.firstCall.firstArg).to.eql(newStatusObj);
+    });
   });
 
   describe('_fetchTask', () => {
