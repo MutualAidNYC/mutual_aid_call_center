@@ -82,6 +82,8 @@ describe('TwilioTaskRouter class', () => {
     const defaultWorkspace = taskRouter.workspace;
     let updateStub;
     let addRowStub;
+    let getPendingReservationStub;
+    let updateReservationStatusStub;
     beforeEach(() => {
       taskRouter.activities = activityObj;
       taskRouter.workers = workersObj;
@@ -90,10 +92,20 @@ describe('TwilioTaskRouter class', () => {
       taskRouter.workspace = {};
       taskRouter.workspace.workers = workersStub;
       addRowStub = sinon.stub(airtableController, 'addRowToTable');
+      getPendingReservationStub = sinon.stub(
+        taskRouter,
+        '_getPendingReservation',
+      );
+      updateReservationStatusStub = sinon.stub(
+        taskRouter,
+        '_updateReservationStatus',
+      );
     });
     afterEach(() => {
       taskRouter.workspace = defaultWorkspace;
       addRowStub.restore();
+      getPendingReservationStub.restore();
+      updateReservationStatusStub.restore();
     });
     it('Ignores unknown numbers', async () => {
       const event = {
@@ -151,7 +163,7 @@ describe('TwilioTaskRouter class', () => {
         Reason: 'Text Message',
       });
     });
-    it('Marks user as offline and sends a message, also adds to log', async () => {
+    it('Marks user as offline and sends a message, also adds to log, no task reservation so no updateReservation Status', async () => {
       const event = {
         Body: 'pause Calls',
         From: '+12223334444',
@@ -162,6 +174,7 @@ describe('TwilioTaskRouter class', () => {
       updateStub.returns({
         activityName: 'Offline',
       });
+      getPendingReservationStub.returns(undefined);
       expect(await taskRouter.handleIncomingSms(event)).to.equal(
         `<?xml version="1.0" encoding="UTF-8"?><Response><Message>We've marked you as unavailable for calls. To begin receiving calls again, respond with "resume calls"</Message></Response>`,
       );
@@ -179,6 +192,46 @@ describe('TwilioTaskRouter class', () => {
         Availability: 'Unavailable',
         Reason: 'Text Message',
       });
+      expect(updateReservationStatusStub.called).to.equal(false);
+    });
+    it('Marks user as offline and sends a message, also adds to log, task reservation so invoke updateReservationStatus', async () => {
+      const event = {
+        Body: 'pause Calls',
+        From: '+12223334444',
+      };
+      workersStub.returns({
+        update: updateStub,
+      });
+      updateStub.returns({
+        activityName: 'Offline',
+      });
+      getPendingReservationStub.returns({ sid: 'reservationSid' });
+      expect(await taskRouter.handleIncomingSms(event)).to.equal(
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>We've marked you as unavailable for calls. To begin receiving calls again, respond with "resume calls"</Message></Response>`,
+      );
+      expect(updateStub.called).to.equal(false);
+
+      expect(addRowStub.firstCall.args[0]).to.equal(config.airtable.phoneBase);
+      expect(addRowStub.firstCall.args[1]).to.equal(
+        'Sign In / Sign Out record',
+      );
+      expect(addRowStub.firstCall.args[2]).to.eql({
+        'Unique Name': 'Jane Doe',
+        Availability: 'Unavailable',
+        Reason: 'Text Message',
+      });
+      expect(updateReservationStatusStub.firstCall.args[0]).to.equal(
+        'WKbaloney1',
+      );
+      expect(updateReservationStatusStub.firstCall.args[1]).to.equal(
+        'reservationSid',
+      );
+      expect(updateReservationStatusStub.firstCall.args[2]).to.equal(
+        'rejected',
+      );
+      expect(updateReservationStatusStub.firstCall.args[3]).to.equal(
+        activityObj.Offline,
+      );
     });
   });
 
@@ -1170,6 +1223,37 @@ describe('TwilioTaskRouter class', () => {
           workerSid,
           reservationSid,
           newStatus,
+        ),
+      ).to.equal(updateObj);
+      expect(getWorkerObjStub.firstCall.firstArg).to.equal(workerSid);
+      expect(reservationStub.firstCall.firstArg).to.equal(reservationSid);
+      expect(updateStub.firstCall.firstArg).to.eql(newStatusObj);
+    });
+    it('Updates a reservation and changes worker status', async () => {
+      const reservationStub = sinon.stub();
+      const workerObj = { reservations: reservationStub };
+      const updateStub = sinon.stub();
+      const reservationObj = { update: updateStub };
+      const updateObj = {};
+      const workerSid = 'someSid';
+      const reservationSid = 'someReservationSid';
+      const newStatus = 'someStatus';
+      const newWorkerActivitySid = 'someActivitySid';
+      const newStatusObj = {
+        reservationStatus: newStatus,
+        workerActivitySid: newWorkerActivitySid,
+      };
+
+      getWorkerObjStub.returns(workerObj);
+      reservationStub.returns(reservationObj);
+      updateStub.resolves(updateObj);
+
+      expect(
+        await taskRouter._updateReservationStatus(
+          workerSid,
+          reservationSid,
+          newStatus,
+          newWorkerActivitySid,
         ),
       ).to.equal(updateObj);
       expect(getWorkerObjStub.firstCall.firstArg).to.equal(workerSid);
