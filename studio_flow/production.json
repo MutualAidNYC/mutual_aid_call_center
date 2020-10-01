@@ -1,0 +1,1918 @@
+{
+  "description": "Production - Mutual Aid Call Center",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "event": "incomingMessage"
+        },
+        {
+          "next": "say_hello",
+          "event": "incomingCall"
+        },
+        {
+          "event": "incomingRequest"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 490,
+          "y": -1340
+        }
+      }
+    },
+    {
+      "name": "phone_tree_1",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "split_key_press",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "next": "phone_tree_2",
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/phone-tree-one.mp3",
+        "voice": "alice",
+        "number_of_digits": 1,
+        "speech_timeout": "auto",
+        "offset": {
+          "x": 650,
+          "y": -390
+        },
+        "loop": 1,
+        "finish_on_key": "",
+        "language": "en",
+        "stop_gather": false,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 7
+      }
+    },
+    {
+      "name": "split_key_press",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "phone_tree_1",
+          "event": "noMatch"
+        },
+        {
+          "next": "EnglishVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "1",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "next": "SpanishVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "2",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "2"
+            }
+          ]
+        },
+        {
+          "next": "MandarinVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "3",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "3"
+            }
+          ]
+        },
+        {
+          "next": "RussianVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "4",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "4"
+            }
+          ]
+        },
+        {
+          "next": "FrenchVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "6",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "6"
+            }
+          ]
+        },
+        {
+          "next": "UrduVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "8",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "8"
+            }
+          ]
+        },
+        {
+          "next": "CreoleVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "5",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "5"
+            }
+          ]
+        },
+        {
+          "next": "BanglaVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "7",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "7"
+            }
+          ]
+        },
+        {
+          "next": "KoreanVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "9",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "9"
+            }
+          ]
+        },
+        {
+          "next": "phone_tree_2",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "0",
+              "arguments": ["{{widgets.phone_tree_1.Digits}}"],
+              "type": "equal_to",
+              "value": "0"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.phone_tree_1.Digits}}",
+        "offset": {
+          "x": 850,
+          "y": -90
+        }
+      }
+    },
+    {
+      "name": "setVariables",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "CheckOpenHours",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "America/New_York",
+            "key": "timezone"
+          }
+        ],
+        "offset": {
+          "x": 320,
+          "y": 990
+        }
+      }
+    },
+    {
+      "name": "CheckOpenHours",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "setOpenHoursVars",
+          "event": "success"
+        },
+        {
+          "next": "Technical_dificulties",
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS65490a797238cc6d920f93f3f1f628a6",
+        "environment_sid": "ZE8df7d4fe4940cae661de8301e8b61bf0",
+        "offset": {
+          "x": 360,
+          "y": 1190
+        },
+        "function_sid": "ZHace3a1c9e1dcf635f8c5ad0d3f588351",
+        "parameters": [
+          {
+            "value": "{{flow.variables.timezone}}",
+            "key": "timezone"
+          },
+          {
+            "value": "https://phone.mutualaid.nyc/api/schedule/production",
+            "key": "scheduleUrl"
+          }
+        ],
+        "url": "https://mutual-aid-call-center-4138-production.twil.io/scheduler"
+      }
+    },
+    {
+      "name": "setOpenHoursVars",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "isOpen",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "{{widgets.CheckOpenHours.parsed.isOpen}}",
+            "key": "isOpen"
+          },
+          {
+            "value": "{{widgets.CheckOpenHours.parsed.schedule}}",
+            "key": "schedule"
+          }
+        ],
+        "offset": {
+          "x": 320,
+          "y": 1400
+        }
+      }
+    },
+    {
+      "name": "isOpen",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "languageScheduler",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "open",
+              "arguments": ["{{flow.variables.isOpen}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "closed",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "closed",
+              "arguments": ["{{flow.variables.isOpen}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isOpen}}",
+        "offset": {
+          "x": 320,
+          "y": 1610
+        }
+      }
+    },
+    {
+      "name": "EnglishVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "English",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": -760,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "SpanishVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Spanish",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": -440,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "languageScheduler",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "setLanguageVars",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS65490a797238cc6d920f93f3f1f628a6",
+        "environment_sid": "ZE8df7d4fe4940cae661de8301e8b61bf0",
+        "offset": {
+          "x": 260,
+          "y": 2040
+        },
+        "function_sid": "ZHa1be404efede17ed8f8c521ebd9a0ea5",
+        "parameters": [
+          {
+            "value": "{{flow.variables.timezone}}",
+            "key": "timezone"
+          },
+          {
+            "value": "{{flow.variables.language}}",
+            "key": "language"
+          },
+          {
+            "value": "{{flow.variables.schedule}}",
+            "key": "schedule"
+          }
+        ],
+        "url": "https://mutual-aid-call-center-4138-production.twil.io/languageScheduler"
+      }
+    },
+    {
+      "name": "setLanguageVars",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "split_language",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "{{widgets.languageScheduler.parsed.isLanguageInOperation}}",
+            "key": "isLanguageInOperation"
+          }
+        ],
+        "offset": {
+          "x": 260,
+          "y": 2270
+        }
+      }
+    },
+    {
+      "name": "split_language",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "splitEnglishInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "english",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "english"
+            }
+          ]
+        },
+        {
+          "next": "splitSpanishInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "spanish",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "spanish"
+            }
+          ]
+        },
+        {
+          "next": "splitMandarinInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "mandarin",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "mandarin"
+            }
+          ]
+        },
+        {
+          "next": "splitRussianInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "russian",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "russian"
+            }
+          ]
+        },
+        {
+          "next": "FrenchInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "french",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "french"
+            }
+          ]
+        },
+        {
+          "next": "UrduInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "urdu",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "urdu"
+            }
+          ]
+        },
+        {
+          "next": "CreoleInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "creole",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "creole"
+            }
+          ]
+        },
+        {
+          "next": "BanglaInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "bangala",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "bangala"
+            }
+          ]
+        },
+        {
+          "next": "KoreanInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "korean",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "korean"
+            }
+          ]
+        },
+        {
+          "next": "ArabicInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "arabic",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "arabic"
+            }
+          ]
+        },
+        {
+          "next": "HindiInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "hindi",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "hindi"
+            }
+          ]
+        },
+        {
+          "next": "YidishInOperation",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "yiddish",
+              "arguments": ["{{flow.variables.language}}"],
+              "type": "equal_to",
+              "value": "yiddish"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.language}}",
+        "offset": {
+          "x": 260,
+          "y": 2530
+        }
+      }
+    },
+    {
+      "name": "splitEnglishInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "englishAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "englishUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": -2240,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "englishAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_english.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": -2470,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "englishUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_english.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": -2080,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "splitSpanishInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "spanishAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "spanishUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": -1640,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "spanishAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_spanish.mp3",
+        "voice": "default",
+        "offset": {
+          "x": -1670,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "es-MX"
+      }
+    },
+    {
+      "name": "spanishUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_spanish.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": -1340,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "es-MX"
+      }
+    },
+    {
+      "name": "say_hello",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "phone_tree_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/hello-english.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": 620,
+          "y": -1030
+        },
+        "loop": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "MandarinVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Mandarin",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": -120,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "RussianVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Russian",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 200,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "FrenchVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "French",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 520,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "UrduVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Urdu",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 840,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "splitMandarinInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "mandarinAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "mandarinUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": -890,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "mandarinAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_mandrin.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": -1000,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "zh-CN"
+      }
+    },
+    {
+      "name": "mandarinUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_mandrin.mp3",
+        "voice": "default",
+        "offset": {
+          "x": -680,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "zh-CN"
+      }
+    },
+    {
+      "name": "splitRussianInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "russianAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "russianUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": -310,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "russianAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_russian.mp3",
+        "voice": "Polly.Kendra-Neural",
+        "offset": {
+          "x": -320,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "ru-RU"
+      }
+    },
+    {
+      "name": "russianUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_russian.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": 10,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "ru-RU"
+      }
+    },
+    {
+      "name": "FrenchInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "frenchAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "frenchUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 410,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "frenchAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_french.mp3",
+        "voice": "Polly.Celine",
+        "offset": {
+          "x": 370,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "fr-FR"
+      }
+    },
+    {
+      "name": "frenchUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_french.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": 710,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "fr-FR"
+      }
+    },
+    {
+      "name": "UrduInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "urduAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "UrduUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 1040,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "urduAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_urdu.mp3",
+        "voice": "default",
+        "offset": {
+          "x": 1110,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "UrduUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_urdu.mp3",
+        "voice": "Polly.Kendra-Neural",
+        "offset": {
+          "x": 1440,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "closed",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "voice": "alice",
+        "offset": {
+          "x": -130,
+          "y": 1400
+        },
+        "loop": 1,
+        "say": "We’re sorry, we currently have no  volunteers available at this time. Please call back during regular hours, or visit us on the web www, dot mutual, aid dot en why see,  for our hours and additional resources.",
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "Technical_dificulties",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 860,
+          "y": 1400
+        },
+        "loop": 2,
+        "say": "Hello, we are presently experiancing technical difficulties. Please call back later."
+      }
+    },
+    {
+      "name": "CreoleVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Creole",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 1160,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "BanglaVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Bangla",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 1480,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "KoreanVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Korean",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 1800,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "phone_tree_2",
+      "type": "gather-input-on-call",
+      "transitions": [
+        {
+          "next": "split_1",
+          "event": "keypress"
+        },
+        {
+          "event": "speech"
+        },
+        {
+          "next": "phone_tree_1",
+          "event": "timeout"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/phone-tree-two.mp3",
+        "number_of_digits": 1,
+        "speech_timeout": "auto",
+        "offset": {
+          "x": 2200,
+          "y": -60
+        },
+        "loop": 1,
+        "finish_on_key": "#",
+        "stop_gather": false,
+        "gather_language": "en",
+        "profanity_filter": "true",
+        "timeout": 7
+      }
+    },
+    {
+      "name": "split_1",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "ArabicVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "1",
+              "arguments": ["{{widgets.phone_tree_2.Digits}}"],
+              "type": "equal_to",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "next": "HindiVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "2",
+              "arguments": ["{{widgets.phone_tree_2.Digits}}"],
+              "type": "equal_to",
+              "value": "2"
+            }
+          ]
+        },
+        {
+          "next": "YiddishVariable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "3",
+              "arguments": ["{{widgets.phone_tree_2.Digits}}"],
+              "type": "equal_to",
+              "value": "3"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.phone_tree_2.Digits}}",
+        "offset": {
+          "x": 2220,
+          "y": 220
+        }
+      }
+    },
+    {
+      "name": "ArabicVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Arabic",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 2120,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "HindiVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Hindi",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 2440,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "YiddishVariable",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "setVariables",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "Yiddish",
+            "key": "language"
+          }
+        ],
+        "offset": {
+          "x": 2770,
+          "y": 600
+        }
+      }
+    },
+    {
+      "name": "CreoleInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "CreoleAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "CreoleUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 1750,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "CreoleAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_creole.mp3",
+        "voice": "default",
+        "offset": {
+          "x": 1820,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "CreoleUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_creole.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": 2150,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "BanglaUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_bangla.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": 2860,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "BanglaAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_bangla.mp3",
+        "voice": "default",
+        "offset": {
+          "x": 2530,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "BanglaInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "BanglaAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "BanglaUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 2460,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "KoreanUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_korean.mp3",
+        "voice": "default",
+        "offset": {
+          "x": 3530,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "ko-KR"
+      }
+    },
+    {
+      "name": "KoreanAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_korean.mp3",
+        "voice": "default",
+        "offset": {
+          "x": 3200,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "ko-KR"
+      }
+    },
+    {
+      "name": "KoreanInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "KoreanAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "KoreanUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 3130,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "ArabicUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "voice": "default",
+        "offset": {
+          "x": 4180,
+          "y": 3160
+        },
+        "loop": 1,
+        "say": "We’re sorry, we currently have no Arabic speaking volunteers available at this time. Please call back during regular hours, or visit us on the web www dot mutualaid dot en why see, for our hours and additional resources.",
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "ArabicAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "voice": "default",
+        "offset": {
+          "x": 3850,
+          "y": 3160
+        },
+        "loop": 1,
+        "say": "Please hold while we locate an available Arabic speaking volunteer.",
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "ArabicInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "ArabicAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "ArabicUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 3780,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "HindiInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "HindiAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "HindiUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 4440,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "HindiAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/available_hindi.mp3",
+        "voice": "alice",
+        "offset": {
+          "x": 4510,
+          "y": 3160
+        },
+        "loop": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "HindiUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "play": "https://firebrick-sloth-5004.twil.io/assets/unavailable_hindi.mp3",
+        "voice": "default",
+        "offset": {
+          "x": 4840,
+          "y": 3160
+        },
+        "loop": 3,
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "YidishInOperation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "event": "noMatch"
+        },
+        {
+          "next": "YiddishAvailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Availabe",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "true"
+            }
+          ]
+        },
+        {
+          "next": "YiddishUnavailable",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "Unavailable",
+              "arguments": ["{{flow.variables.isLanguageInOperation}}"],
+              "type": "equal_to",
+              "value": "false"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{flow.variables.isLanguageInOperation}}",
+        "offset": {
+          "x": 5100,
+          "y": 2850
+        }
+      }
+    },
+    {
+      "name": "YiddishAvailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "next": "enqueue_1",
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "voice": "default",
+        "offset": {
+          "x": 5170,
+          "y": 3160
+        },
+        "loop": 1,
+        "say": "Please hold while we locate an available Yiddish speaking volunteer.",
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "YiddishUnavailable",
+      "type": "say-play",
+      "transitions": [
+        {
+          "event": "audioComplete"
+        }
+      ],
+      "properties": {
+        "voice": "default",
+        "offset": {
+          "x": 5500,
+          "y": 3160
+        },
+        "loop": 1,
+        "say": "We’re sorry, we currently have no Yiddish speaking volunteers available at this time. Please call back during regular hours, or visit us on the web www dot mutualaid dot en why see, for our hours and additional resources.",
+        "language": "en-US"
+      }
+    },
+    {
+      "name": "enqueue_1",
+      "type": "enqueue-call",
+      "transitions": [
+        {
+          "event": "callComplete"
+        },
+        {
+          "event": "failedToEnqueue"
+        },
+        {
+          "event": "callFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 1720,
+          "y": 3710
+        },
+        "workflow_sid": "WW29dee39705a7f324a3c634600294b9c2",
+        "task_attributes": "{\"selected_language\":\"{{flow.variables.language}}\"}"
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}
