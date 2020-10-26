@@ -519,6 +519,41 @@ class TwilioTaskRouter {
     });
   }
 
+  async sendShiftWarning(shift) {
+    const tomorrow = moment()
+      .add(1, 'days')
+      .tz('America/New_York')
+      .format('dddd');
+    const dayShift = `${tomorrow} ${shift}`;
+    logger.info('Sending shift warning for %O', dayShift);
+
+    const volunteers = await airtableController.fetchAllRecordsFromTable(
+      'Controls - Phone System Volunteers',
+      config.airtable.phoneBase,
+      dayShift,
+    );
+
+    logger.info(
+      'Found %d volunteers for %O shift',
+      volunteers.length,
+      dayShift,
+    );
+
+    volunteers.forEach((volunteer) => {
+      const phone = formatPhoneNumber(volunteer.fields.Phone);
+      // FIXME: Who should we advise volunteers contact? Check with hotline
+      // stakeholders regarding the contents of this message.
+      const msg = `Mutual Aid NYC thanks you for volunteering! This is just a reminder that your ${dayShift} shift is tomorrow. If you have any questions or concerns please contact XXX. You'll receive another message at the start of your shift.`;
+      this._sendTextMessage(phone, msg);
+    });
+  }
+
+  async sendAllShiftWarnings(shifts) {
+    await shifts.forEach((shift) => {
+      this.sendShiftWarning(shift);
+    });
+  }
+
   async startShift(shift) {
     const logRecords = [];
     // get day of week
