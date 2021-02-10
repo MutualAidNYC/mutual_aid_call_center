@@ -607,7 +607,7 @@ describe('TwilioTaskRouter class', () => {
         fetchTaskStub.resolves(task);
 
         expect(await taskRouter.handleAgentConnected(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Play>https://${config.hostName}/assets/receiving_call_in_german.mp3</Play></Gather></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true" timeout="15"><Play>https://${config.hostName}/assets/receiving_call_in_german.mp3</Play></Gather></Response>`,
         );
         expect(
           getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
@@ -640,7 +640,7 @@ describe('TwilioTaskRouter class', () => {
         fetchTaskStub.resolves(task);
 
         expect(await taskRouter.handleAgentConnected(event)).to.equal(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true"><Play>https://${config.hostName}/assets/receiving_call_in_german.mp3</Play></Gather></Response>`,
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Gather action="https://${config.hostName}/api/agent-gather" method="POST" numDigits="1" actionOnEmptyResult="true" timeout="15"><Play>https://${config.hostName}/assets/receiving_call_in_german.mp3</Play></Gather></Response>`,
         );
         expect(
           getWorkersReservationsStub.calledOnceWith('WKbaloney2', {
