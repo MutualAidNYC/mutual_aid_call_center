@@ -1,0 +1,17 @@
+cron:
+- description: "end shifts"
+  url: /jobs/end-shifts
+  schedule: every mon,tue,wed,thu,fri 20:00
+  timezone: America/New_York
+- description: "sync workers"
+  url: /jobs/sync-workers
+  schedule: every mon,tue,wed,thu,fri 12:00
+  timezone: America/New_York
+- description: "start 2pm-5pm shift"
+  url: /jobs/start-2pm-5pm-shift
+  schedule: every mon,tue,wed,thu,fri 14:00
+  timezone: America/New_York
+- description: "start 5pm-8pm shift"
+  url: /jobs/start-5pm-8pm-shift
+  schedule: every mon,tue,wed,thu,fri 17:00
+  timezone: America/New_York

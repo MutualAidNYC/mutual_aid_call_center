@@ -1,3 +1,4 @@
+const app = require('../server');
 const { logger } = require('../loaders/logger');
 // const { setTwilioInfoToApp } = require('../api/routes/sms-incoming');
 const taskRouter = require('../service/twilioTaskRouter');
@@ -12,4 +13,7 @@ const runJob = async () => {
   await taskRouter.sendAllShiftWarnings(['2PM - 5PM', '5PM - 8PM']);
 };
 
-runJob();
+app.get('/jobs/shift-warnings', async (req, res) => {
+  runJob();
+  res.sendStatus(200);
+});
