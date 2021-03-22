@@ -239,6 +239,7 @@ class TwilioTaskRouter {
       method: 'POST',
       numDigits: 1,
       actionOnEmptyResult: true,
+      timeout: 15,
     });
     gather.play(
       `https://${
