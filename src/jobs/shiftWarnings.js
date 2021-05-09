@@ -9,12 +9,11 @@ const runJob = async () => {
   logger.info('Airtable ready');
   await taskRouter.init();
   logger.info('TaskRouter Initialized');
-  logger.info('Starting 2PM - 5PM shift');
-  await taskRouter.startShift('2PM - 5PM');
-  logger.info('2PM - 5PM shift started');
+  logger.info("Sending warnings for tomorrow's shifts");
+  await taskRouter.sendAllShiftWarnings(['2PM - 5PM', '5PM - 8PM']);
 };
 
-app.get('/jobs/start-2pm-5pm-shift', async (req, res) => {
+app.get('/jobs/shift-warnings', async (req, res) => {
   await runJob();
   res.sendStatus(200);
 });
