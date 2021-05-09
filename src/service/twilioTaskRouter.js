@@ -643,15 +643,18 @@ class TwilioTaskRouter {
 
   async syncWorkers() {
     // get airtableworkers
+    logger.info('Syncing workers');
     const airtableWorkers = await airtableController.fetchAllRecordsFromTable(
       'Controls - Phone System Volunteers',
       config.airtable.phoneBase,
     );
+    logger.info('Loaded volunteers Airtable');
     const twilioWorkers = await this._fetchWorkers();
     // get workers
     const workers = {};
     const airtableUpdateRecords = [];
     // eslint-disable-next-line no-restricted-syntax
+    logger.info('Loaded Twilio workers');
     for (const worker of airtableWorkers) {
       // for each airtableworker
       if (!worker.fields.Phone || !worker.fields.Name) {
@@ -701,12 +704,14 @@ class TwilioTaskRouter {
         }
       }
     });
+    logger.info('Synced workers with Twilio');
 
     await airtableController.updateRecords(
       config.airtable.phoneBase,
       'Controls - Phone System Volunteers',
       airtableUpdateRecords,
     );
+    logger.info('Updated worker metadata in Airtable');
   }
 }
 
