@@ -1,3 +1,4 @@
+const app = require('../server');
 const { logger } = require('../loaders/logger');
 // const { setTwilioInfoToApp } = require('../api/routes/sms-incoming');
 const taskRouter = require('../service/twilioTaskRouter');
@@ -13,4 +14,7 @@ const runJob = async () => {
   logger.info('Shifts ended');
 };
 
-runJob();
+app.get('/jobs/end-shifts', async (req, res) => {
+  await runJob();
+  res.sendStatus(200);
+});
