@@ -295,22 +295,22 @@ describe('airtableController', () => {
     const view = 'a view';
     const axiosConfig1 = {
       method: 'get',
-      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/Controls%20-%20Phone%20System%20Lines?view=a%20view`,
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/Controls%20-%20Phone%20System%20Lines`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
-      data: {
-        view: 'Grid%20view',
+      params: {
+        view: 'a view',
       },
     };
     const axiosConfig2 = {
       method: 'get',
-      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/Controls%20-%20Phone%20System%20Lines?view=a%20view`,
+      url: `https://api.airtable.com/v0/${config.airtable.phoneBase}/Controls%20-%20Phone%20System%20Lines`,
       headers: {
         Authorization: `Bearer ${config.airtable.apiKey}`,
       },
-      data: {
-        view: 'Grid%20view',
+      params: {
+        view: 'a view',
         offset: 'reXXXXXXXXXXXXXXX2',
       },
     };
