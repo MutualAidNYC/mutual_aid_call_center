@@ -15,6 +15,6 @@ const runJob = async () => {
 };
 
 app.get('/jobs/start-5pm-8pm-shift', async (req, res) => {
-  runJob();
+  await runJob();
   res.sendStatus(200);
 });

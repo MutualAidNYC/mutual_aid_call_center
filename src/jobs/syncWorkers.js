@@ -12,6 +12,6 @@ const runJob = async () => {
 };
 
 app.get('/jobs/sync-workers', async (req, res) => {
-  runJob();
+  await runJob();
   res.sendStatus(200);
 });

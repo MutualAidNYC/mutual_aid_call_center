@@ -15,6 +15,6 @@ const runJob = async () => {
 };
 
 app.get('/jobs/end-shifts', async (req, res) => {
-  runJob();
+  await runJob();
   res.sendStatus(200);
 });

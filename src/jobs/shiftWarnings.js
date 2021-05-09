@@ -14,6 +14,6 @@ const runJob = async () => {
 };
 
 app.get('/jobs/shift-warnings', async (req, res) => {
-  runJob();
+  await runJob();
   res.sendStatus(200);
 });
