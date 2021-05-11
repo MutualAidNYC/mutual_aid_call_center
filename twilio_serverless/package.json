@@ -18,6 +18,6 @@
   "dependencies": {
     "axios": "^0.21.1",
     "moment-range": "^4.0.2",
-    "moment-timezone": "^0.5.28"
+    "moment-timezone": "^0.5.33"
   }
 }
