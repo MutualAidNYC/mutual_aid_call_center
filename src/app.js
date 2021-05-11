@@ -20,6 +20,11 @@ require('./api/routes/agent-gather');
 require('./api/routes/assets');
 require('./api/routes/workspace-event');
 
+require('./jobs/endShifts');
+require('./jobs/start_2PM_5PM_shift');
+require('./jobs/start_5PM_8PM_shift');
+require('./jobs/syncWorkers');
+
 const { setSchedule } = require('./api/routes/schedule');
 
 const port = process.env.PORT || 80;
