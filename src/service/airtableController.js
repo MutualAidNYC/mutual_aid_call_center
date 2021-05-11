@@ -153,7 +153,6 @@ class AirtableController {
   async fetchAllRecordsFromTable(table, base, view = 'Grid view') {
     const urlify = (phrase) => phrase.replace(/ /gi, '%20');
     const urlifiedTableName = urlify(table);
-    const urlifiedView = urlify(view);
     let count = 0;
     const maxTries = 2000;
     // eslint-disable-next-line no-constant-condition
@@ -168,13 +167,13 @@ class AirtableController {
               Authorization: `Bearer ${config.airtable.apiKey}`,
             },
             method: 'get',
-            url: `https://api.airtable.com/v0/${base}/${urlifiedTableName}?view=${urlifiedView}`,
-            data: {
-              view: 'Grid%20view',
+            url: `https://api.airtable.com/v0/${base}/${urlifiedTableName}`,
+            params: {
+              view,
             },
           };
           if (offset) {
-            axiosConfig.data.offset = offset;
+            axiosConfig.params.offset = offset;
           }
           const response = await this.axios.request(axiosConfig); // eslint-disable-line no-await-in-loop
           response.data.records.forEach((record) => {
