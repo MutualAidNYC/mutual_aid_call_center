@@ -10,7 +10,7 @@
     "deploy-prod": "twilio-run deploy --environment=production --override-existing-project"
   },
   "devDependencies": {
-    "twilio-run": "2.* || >2.0.0-rc"
+    "twilio-run": "3.*"
   },
   "engines": {
     "node": "10.17.0"
